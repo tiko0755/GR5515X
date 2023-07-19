@@ -1,0 +1,13 @@
+Log file created at: 2023/07/18 21:15:47
+Running on machine: RD-BUILD
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+I0718 21:15:47.283489 47228 main.cpp:74] console version:1.2.26.0315
+I0718 21:15:47.286492 47228 cjLinkAgency.cpp:68] update Agency,product type: 5
+I0718 21:15:47.286492 47228 cjLinkAgency.cpp:100] Agency null
+I0718 21:15:47.286492 47228 cmdlineserver.cpp:1052] Programmer start
+I0718 21:15:47.286492 47228 cmdlineserver.cpp:952] called setFlashSize: startaddr:16777216 size:1024
+I0718 21:15:47.286492 47228 cmdlineserver.cpp:182] product type: 0
+I0718 21:15:47.286492 47228 cjLinkAgency.cpp:68] update Agency,product type: 0
+I0718 21:15:47.287492 47228 cjLinkAgency.cpp:80] update Agency:0
+I0718 21:15:47.287492 47228 gdbinFileOperate.cpp:490] not security mode
+I0718 21:15:47.301506 47228 cmdlineserver.cpp:1114] Programmer finished

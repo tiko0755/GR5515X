@@ -1,0 +1,33 @@
+//20230419
+
+1.     在应用工程中加入app_gapc_hci_patch.c文件。
+
+2.     在main.c 中extern void app_disc_cmp_evt_replace(void);
+
+3.     并在main函数中调用app_disc_cmp_evt_replace( ) ;
+
+4.     在rom_symbol.txt中添加如下：
+
+ 
+
+0x0000fead T gapc_send_disconect_ind
+
+0x0000fed3 T gapc_send_error_evt
+
+0x00012171 T gapm_con_cleanup
+
+0x0002b669 T hci_rd_rem_ver_info_cmp_evt_handler
+
+0x00022679 T hci_auth_payl_to_exp_evt_handler
+
+0x000240dd T hci_enc_chg_evt_handler
+
+0x00024109 T hci_enc_key_refr_evt_handler    
+
+ 
+
+Bug点：设备发起l2cap的连接参数更新请求之后，如果在30s内没有接收到对端的rsp，那么协议栈就会自动触发断连，由于协议栈的逻辑缺陷在发送断连事件消息时，目标任务错误，导致应用层无法正常收到断链Callback。
+
+修复点：确保每个断链事件的消息都可以正常上报给SDK，确保应用层可以正常上报Callback。
+
+出错埋点检查：检查 discon_not_report_flag 标记，如果为1，则再次发生过该Bug,但是Patch 修复。
