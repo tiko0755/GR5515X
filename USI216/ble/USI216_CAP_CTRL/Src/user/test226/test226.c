@@ -30,31 +30,31 @@ static uint8_t test226_xorcheck(const uint8_t *buf, uint8_t len);
  *****************************************************************************************
  */
 int hexCmdCheck(const uint8_t *pData, uint16_t size, uint8_t* chckCorrect, uint16_t* wCmd, uint16_t* wLen){
-	uint8_t checkCode;
+    uint8_t checkCode;
     production_test_cli_t *pd_test_cli= (production_test_cli_t *)pData;
-		
-	*wLen = 0xff & (pd_test_cli->wLen>>8);
-	*wCmd = 0xff & (pd_test_cli->wCmd>>8);
+        
+    *wLen = 0xff & (pd_test_cli->wLen>>8);
+    *wCmd = 0xff & (pd_test_cli->wCmd>>8);
 
-	*wLen = pData[1];	*wLen <<= 8;
-	*wLen |= pData[2];
-	*wCmd = pData[3];	*wCmd <<= 8;
-	*wCmd |= pData[4];
+    *wLen = pData[1];    *wLen <<= 8;
+    *wLen |= pData[2];
+    *wCmd = pData[3];    *wCmd <<= 8;
+    *wCmd |= pData[4];
 
     if(pd_test_cli->bHead != PRODUCTION_TEST_CLI_HEAD){
         return -1;
     }
 
-	checkCode = test226_xorcheck(pData, size-1);
-	*chckCorrect = checkCode;
+    checkCode = test226_xorcheck(pData, size-1);
+    *chckCorrect = checkCode;
     if(pData[size-1] != checkCode){
-			return -2;
+            return -2;
     }
-		
-		if(chckCorrect){
-			*chckCorrect = checkCode;
-		}
-		return 0;
+        
+        if(chckCorrect){
+            *chckCorrect = checkCode;
+        }
+        return 0;
 }
 
 /**
@@ -91,7 +91,7 @@ void pen_rsp(uint8_t status,uint8_t head, uint8_t cmd, uint8_t* dat, uint8_t len
     
     databuff[0]=head;
     databuff[1]=0;
-		databuff[2]=7;
+        databuff[2]=7;
     databuff[3]=0;
     databuff[4]=cmd;
     databuff[5]=status;
@@ -101,9 +101,9 @@ void pen_rsp(uint8_t status,uint8_t head, uint8_t cmd, uint8_t* dat, uint8_t len
         databuff[2]+=len;
         memcpy(&databuff[6], dat, len);
     }
-		
+        
     databuff[databuff[2]-1]=test226_xorcheck(databuff,databuff[2]-1);
-	send_async(databuff, databuff[2]);
+    send_async(databuff, databuff[2]);
 }
 
 /**
@@ -116,37 +116,37 @@ void pen_rsp(uint8_t status,uint8_t head, uint8_t cmd, uint8_t* dat, uint8_t len
  *****************************************************************************************
  */
 u16 fetchHexCLFromRingBuffer(RINGBUFF_T* rb, u8* line, u16 len){
-	u8 checkcode;
-	u16 wCmd,wLen,ret=0;
-	s32 i,bytes,count;
-	u8 buff[256];
-		
-	count = RingBuffer_GetCount(rb);
-	if((count <= 0) || (line==NULL) || (len==0))	return 0;
-	
-	// only take the lase receive
-	while(count > 256){
-		RingBuffer_Pop(rb, buff);	// abandoned
-		count = RingBuffer_GetCount(rb);
-	}
-	memset(buff,0,256);
-	bytes = RingBuffer_PopMult(rb, buff, 256);
-	RingBuffer_Flush(rb);
-	
-	// seek for a packet
-	for(i=0;i<bytes;i++){
-		if(hexCmdCheck(&buff[i], 256-i, &checkcode, &wCmd, &wLen)==0){
-			count = bytes-(i+wLen);
-			if(count > 0){
-				RingBuffer_InsertMult(rb, &buff[i+wLen], count);
-			}
-			ret = wLen;
-			break;
-		}
-	}
-	
-	if(ret==0){	RingBuffer_InsertMult(rb, buff, bytes);		}	// restore
+    u8 checkcode;
+    u16 wCmd,wLen,ret=0;
+    s32 i,bytes,count;
+    u8 buff[256];
+        
+    count = RingBuffer_GetCount(rb);
+    if((count <= 0) || (line==NULL) || (len==0))    return 0;
+    
+    // only take the lase receive
+    while(count > 256){
+        RingBuffer_Pop(rb, buff);    // abandoned
+        count = RingBuffer_GetCount(rb);
+    }
+    memset(buff,0,256);
+    bytes = RingBuffer_PopMult(rb, buff, 256);
+    RingBuffer_Flush(rb);
+    
+    // seek for a packet
+    for(i=0;i<bytes;i++){
+        if(hexCmdCheck(&buff[i], 256-i, &checkcode, &wCmd, &wLen)==0){
+            count = bytes-(i+wLen);
+            if(count > 0){
+                RingBuffer_InsertMult(rb, &buff[i+wLen], count);
+            }
+            ret = wLen;
+            break;
+        }
+    }
+    
+    if(ret==0){    RingBuffer_InsertMult(rb, buff, bytes);        }    // restore
 
-	return ret;
+    return ret;
 }
 

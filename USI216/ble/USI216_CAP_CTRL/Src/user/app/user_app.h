@@ -53,6 +53,13 @@ extern GattcReadCB xGattcReadCB;
 extern GapConnectCB xGapConnectCB;
 
 
+extern CBx cmplt_BleGap_connect;
+extern CBx cmplt_BleGap_disconnect;
+extern CBx cmplt_BleGattc_mtu_exchange;
+extern CBx cmplt_BleSec_enc_start;
+
+
+
 /*
  * GLOBAL FUNCTION DECLARATION
  *****************************************************************************************

@@ -28,9 +28,11 @@ extern UartDev_t console;
 //extern const PIN_T RUNNING;
 
 // here goes for 3 BLE service
-extern bleClientSrv_dev_t infoCSrv;
-extern bleClientSrv_dev_t battCSrv;
-extern bleClientSrv_dev_t userCSrv;
+#define CSRVS_COUNT (1)
+extern bleClientSrv_dev_t cSrvs[3];
+extern bleClientSrv_dev_t* cSrv_18092D;
+extern bleClientSrv_dev_t* cSrv_180933;
+extern bleClientSrv_dev_t* cSrv_540500;
 
 extern u8 g_loaded;
 extern u8 g_loadedMAC[6];

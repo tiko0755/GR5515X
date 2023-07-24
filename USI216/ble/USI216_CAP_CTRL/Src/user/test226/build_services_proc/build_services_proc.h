@@ -1,5 +1,5 @@
-#ifndef __BUILD_SERVICES_PROC_H__
-#define __BUILD_SERVICES_PROC_H__
+#ifndef __FETCH_SERVICES_PROC_H__
+#define __FETCH_SERVICES_PROC_H__
 
 /*******************************************************************************
 * Include files
@@ -20,12 +20,10 @@
  * 0: unknown command
  *****************************************************************************************
  */
-
-extern u8 isCSrvBuilded;
  
-void buildServicesProc_initial(CB2 onBuild);
-	
-void buildServicesProc(u8* mac, CBx resolve);
+void buildServicesProc_initial(u8* mac);
+    
+void buildServicesProc(CBx resolve);
 void CB_cps4041CB_mac_removed(void*);
 
 void buildDisconnectCB(void);

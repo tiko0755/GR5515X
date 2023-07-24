@@ -225,7 +225,7 @@ static void cmplt_unloadedSta(void* argv){
 #define CTRL_SQU_DISCHARGE     20
 #define CTRL_SQU_RANGE         30
 #define CTRL_SQU_LOAD_TEST    100
-#define CTRL_SQU_LINK_TEST    110            
+#define CTRL_SQU_LINK_TEST    110
 
 static u8 capCtrlSqu = 0;
 static void tmrHandle_capCtrl(void* p_ctx){
