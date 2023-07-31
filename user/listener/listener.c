@@ -44,77 +44,117 @@
 //#include "app_log.h"
 //#include "app_error.h"
 
-static int32_t listener_add(Listener_rsrc_t*, CB2 cb);
-static int32_t listener_remove(Listener_rsrc_t*, CB2 cb);
-static int32_t listener_removeAll(Listener_rsrc_t*);
-static int32_t listener_getCount(Listener_rsrc_t*);
-static int32_t listener_run(Listener_rsrc_t* r, int32_t sta, void* e);
+#define EVENT_MAX           (32)
+#define LISTENER_MAX        (64)
+
+#pragma pack(push,4)        // push current align bytes, and then set 4 bytes align
+typedef struct {
+    const char* evntName;
+    uint8_t listenersBase;
+    uint8_t listenersLen;
+}EventBinding_t;
+#pragma pack(pop)        //recover align bytes from 4 bytes
+
+
+//static char eventName[EVENT_MAX][EVENT_NAME_LEN] = {0};
+static EventBinding_t evntBinding[EVENT_MAX];
+static CB2 listeners[LISTENER_MAX] = {0};
+
+static void evntRemoveCleanUp();
 
 /**
  *****************************************************************************************
  *@brief Setup a listener instance
  *****************************************************************************************
  */
-void setup_listener(Listener_dev_t* d, const char* EVENT_NAME){
-    memset(&d->rsrc,0,sizeof(Listener_rsrc_t));
-    strcpy(d->rsrc.evntName, EVENT_NAME);
+int32_t evntListenerInit(const EventBindingInit_t *p, uint8_t len){
     
-    d->addListener = listener_add;
-    d->removeListener = listener_remove;
-    d->removeAllListeners = listener_removeAll;
-    d->getListenersCount = listener_getCount;
-    d->emit = listener_run;
+    uint16_t i,base,min;
+    // search the same one
+    evntRemoveCleanUp();
+    min = (len<EVENT_MAX?len:EVENT_MAX);
+    base = 0;
+    for(i=0;i<min;i++){
+        evntBinding[i].evntName = p[i].EVENT_NAME;
+        evntBinding[i].listenersBase = base;
+        evntBinding[i].listenersLen = p[i].len;
+        base += p[i].len;
+    }
+    return i;
 }
 
-static int32_t listener_add(Listener_rsrc_t* r, CB2 cb){
-    int32_t i;
-    for(i=0;i<LISTENER_MAX;i++){
-        if(r->listeners[i] == cb){
-            return i;
+
+int32_t evntBindListener(const char* EVNT_NAME, CB2 cb){
+    uint16_t i,j;
+    for(i=0;i<EVENT_MAX;i++){
+        if(strncmp(evntBinding[i].evntName, EVNT_NAME, strlen(EVNT_NAME)) == 0){
+            uint8_t base = evntBinding[i].listenersBase;
+            uint8_t len = evntBinding[i].listenersLen;            
+            for(j=0;j<len;j++){
+                if(NULL == listeners[base+j]){
+                    listeners[base+j] = cb;
+                    return 0;
+                }
+            }
+            return -1;
         }
     }
-    for(i=0;i<LISTENER_MAX;i++){
-        if(r->listeners[i] == NULL){
-            r->listeners[i] = cb;
+    return -2;
+}
+
+int32_t evntRemoveListener(const char* EVNT_NAME, CB2 cb){
+    uint16_t i,j;
+    for(i=0;i<EVENT_MAX;i++){
+        if(strncmp(evntBinding[i].evntName, EVNT_NAME, strlen(EVNT_NAME)) == 0){
+            uint8_t base = evntBinding[i].listenersBase;
+            uint8_t len = evntBinding[i].listenersLen;            
+            for(j=0;j<len;j++){
+                if(cb == listeners[base+j]){
+                    listeners[base+j] = NULL;
+                    return 0;
+                }
+            }
+            return -1;
+        }
+    }
+    return -2;
+}
+
+int32_t evntRemoveAllListeners(const char* EVNT_NAME){
+    uint16_t i,j;
+    for(i=0;i<EVENT_MAX;i++){
+        if(strncmp(evntBinding[i].evntName, EVNT_NAME, strlen(EVNT_NAME)) == 0){
+            uint8_t base = evntBinding[i].listenersBase;
+            uint8_t len = evntBinding[i].listenersLen;
+            memset(&listeners[base], 0, len*sizeof(CB2));
             return i;
         }
     }
     return -1;
 }
 
-static int32_t listener_remove(Listener_rsrc_t* r, CB2 cb){
-    int32_t i;
-    for(i=0;i<LISTENER_MAX;i++){
-        if(r->listeners[i] == cb){
-            r->listeners[i] = NULL;
+
+static void evntRemoveCleanUp(){
+    memset(evntBinding, 0, EVENT_MAX*sizeof(EventBinding_t));
+    memset(listeners, 0, LISTENER_MAX*sizeof(CB2));
+}
+
+
+int32_t evntEmit(const char* EVNT_NAME, int32_t sta, void* e){
+    uint16_t i,j;
+    CB2 op;
+    for(i=0;i<EVENT_MAX;i++){
+        if(strncmp(evntBinding[i].evntName, EVNT_NAME, strlen(EVNT_NAME)) == 0){
+            for(j=0;j<evntBinding[i].listenersLen;j++){
+                op = listeners[evntBinding[i].listenersBase + j];
+                if(op == NULL){
+                    continue;
+                }
+                op(sta, e);
+            }
+            return i;
         }
     }
-    return 0;
+    return -1;
 }
 
-static int32_t listener_removeAll(Listener_rsrc_t* r){
-    memset(r->listeners, 0, LISTENER_MAX*sizeof(CB2));
-    return 0;
-}
-
-static int32_t listener_getCount(Listener_rsrc_t* r){
-    int32_t i,j=0;
-    for(i=0;i<LISTENER_MAX;i++){
-        if(r->listeners[i] != NULL){
-            j++;
-        }
-    }
-    return j;
-}
-
-static int32_t listener_run(Listener_rsrc_t* r, int32_t sta, void* e){
-    int32_t i,j=0;
-    for(i=0;i<LISTENER_MAX;i++){
-        if(r->listeners[i] != NULL){
-            r->listeners[i](sta, e);
-        }
-    }
-    return 0;
-}
-
- 

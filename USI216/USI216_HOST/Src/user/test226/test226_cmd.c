@@ -92,11 +92,12 @@ APP_LOG_DEBUG("<%s>", __func__);
     else if(strncmp(CMD, "pen.reset", strlen("pen.reset"))==0){
         print("+ok@pen.reset()\r\n");
         NVIC_SystemReset();
-    }    
+    }
     else if(strncmp(CMD, "pen.mac", strlen("pen.mac"))==0){
         cps4041.start_getMAC(&cps4041.rsrc, fetchMAC_cmplt_str, 1);
         return 1;
     }
+
     else if(sscanf(CMD, "pen.connect %x %x %x %x %x %x",&x[0],&x[1],&x[2],&x[3],&x[4],&x[5])==6){
         buff[0] = x[5];
         buff[1] = x[4];
@@ -104,15 +105,17 @@ APP_LOG_DEBUG("<%s>", __func__);
         buff[3] = x[2];
         buff[4] = x[1];
         buff[5] = x[0];
-        buildServicesProc(buff, buildSrvs_cmplt_str);
+//        memcpy(buff,x,6);
+        start_buildSrvProc(buff, buildSrvs_cmplt_str);
         return 1;
     }
+
     else if(strncmp(CMD, "pen.connect", strlen("pen.connect"))==0){
 //        if(g_loaded == 0){
 //            print("+err@pen.connect('invalid_mac')\r\n");
 //            return 1;
 //        }
-        buildServicesProc(NULL, buildSrvs_cmplt_str);
+        start_buildSrvProc(NULL, buildSrvs_cmplt_str);
         return 1;
     }
     else if(strncmp(CMD, "pen.disconnect", strlen("pen.disconnect"))==0){

@@ -41,7 +41,7 @@
  */
 #include "gr55xx_sys.h"
 #include "app_log.h"
-#include "user_app.h"
+#include "listener_instance.h"
 
 /*
 * LOCAL FUNCTION DECLARATION
@@ -74,18 +74,18 @@ const gatt_common_cb_fun_t app_gatt_common_callback =
 static void app_gatt_mtu_exchange_cb(uint8_t conn_idx, uint8_t status, uint16_t mtu)
 {
 APP_LOG_DEBUG("<%s mtu:%d>", __func__,mtu);
-
-    if (BLE_SUCCESS == status){
-        if(cmplt_BleGattc_mtu_exchange){
-            cmplt_BleGattc_mtu_exchange(0, &mtu);
-        }
-    }
-    else{
-        if(cmplt_BleGattc_mtu_exchange){
-            cmplt_BleGattc_mtu_exchange(-1, NULL);
-        }
-    }
-    cmplt_BleGattc_mtu_exchange = NULL;
-    
+    uint16_t e = mtu;
+    evntEmit(BIND_MTU_EXCHANGED, status, (void*)&e);
+//    if (BLE_SUCCESS == status){
+//        if(cmplt_BleGattc_mtu_exchange){
+//            cmplt_BleGattc_mtu_exchange(0, &mtu);
+//        }
+//    }
+//    else{
+//        if(cmplt_BleGattc_mtu_exchange){
+//            cmplt_BleGattc_mtu_exchange(-1, NULL);
+//        }
+//    }
+//    cmplt_BleGattc_mtu_exchange = NULL;
 APP_LOG_DEBUG("</%s>", __func__);
 }

@@ -9,42 +9,31 @@
  * INCLUDE FILES
  *****************************************************************************************
  */
-#include "build_services_proc.h"
 #include "app_log.h"
 #include "app_error.h"
 #include "app_timer.h"
+
+#include "build_services_proc.h"
+#include "listener_instance.h"
 #include "user_app.h"
 #include "thsBoard.h"
 
 #define BUILD_TICK  (20)
 
 /*
- * LOCAL VARIABLE DEFINITIONS
- *****************************************************************************************
- */
- 
-/*
- * GLOBAL VARIABLE DEFINITIONS
- *****************************************************************************************
- */
- 
-/*
- * LOCAL FUNCTION DEFINITIONS
+ * LOCAL DEFINITIONS
  *****************************************************************************************
  */
 
 static CBx cmplt_buildSrvs = NULL;
 
 static app_timer_id_t tmrID = NULL;
-static CBx timeoutHdl = NULL;
 static void tmrHandle(void* p_ctx);
 
-static uint8_t buildSqu = 0;
 static uint8_t buildMAC[6];
-
-static void buildSrvsProc_timeout(s32 sta, void* p_ctx);
+static uint8_t buildSqu = 0;
 static uint16_t buildTick = 0;
-static void buildProc_tmrHandler(void* p_ctx);
+
 /**
  *****************************************************************************************
  * @brief 
@@ -54,9 +43,11 @@ static void buildProc_tmrHandler(void* p_ctx);
  * @return 
  *****************************************************************************************
  */
-int32_t buildServicesProc(uint8_t *mac, CBx resolve){
+int32_t start_buildSrvProc(uint8_t *mac, CBx resolve){
+    APP_LOG_RAW_INFO("<%s mac:0x%02x%02x%02x%02x%02x%02x >\r\n", __func__, mac[5],mac[4],mac[3],mac[2],mac[1],mac[0]);
     sdk_err_t error_code;
     if(resolve == NULL){
+        APP_LOG_DEBUG("</%s err:-1>", __func__);
         return -1;
     }
     // setup a timer
@@ -70,66 +61,101 @@ int32_t buildServicesProc(uint8_t *mac, CBx resolve){
     APP_ERROR_CHECK(error_code);
     if(error_code == SDK_SUCCESS){
         cmplt_buildSrvs = resolve;
+        memcpy(buildMAC, mac, 6);
         buildSqu = 1;
     }
     else{
         resolve(-1000, NULL);
+        APP_LOG_DEBUG("</%s err:-2>", __func__);
         return -2;
     }
+    APP_LOG_DEBUG("</%s >", __func__);
     return 0;
 }
  
- 
-//void buildServicesProc_initial(u8* mac){
-//    // setup a timer
-//    sdk_err_t error_code;
-//    error_code = app_timer_create(&tmrID, ATIMER_REPEAT, tmrHandle);
-//    app_timer_start(tmrID, BUILD_TICK, NULL);
-//    cmplt_buildSrvs = NULL;
-//    APP_ERROR_CHECK(error_code);
-//}
-
-//static void tmrHandle(void* p_ctx){
-////    if(timeoutHdl){    
-////        timeoutHdl(0, p_ctx);
-////        timeoutHdl = NULL;
-////    }
-//    buildProc_tmrHandler(p_ctx);
-//}
-
-static uint8_t buildSrv_isConnected = 0;
-static void buildSrv_onDisconnected(int32_t sta, void* e){
-    buildSrv_isConnected++;
+static void terminate_buildSrvProc(int32_t sta, void* e){
+    app_timer_stop(tmrID);
+    if(cmplt_buildSrvs){
+        cmplt_buildSrvs(sta, e);
+    }
+    buildSqu = 0;
 }
 
-static uint8_t buildSrv_isSec_enc = 0;
+static int8_t buildSrv_isConnected = 0;
+static void buildSrv_onConnected(int32_t sta, void* e){
+    APP_LOG_DEBUG("<%s sta:0x%04x>", __func__, sta);
+    if(BLE_SUCCESS == sta){
+        buildSrv_isConnected = 1;
+    }
+    else{
+        buildSrv_isConnected = -1;
+    }
+    APP_LOG_DEBUG("</%s >", __func__);
+}
+
+static int8_t buildSrv_isSec_enc = 0;
 static void buildSrv_onSec_enc(int32_t sta, void* e){
-    buildSrv_isSec_enc++;
+    APP_LOG_DEBUG("<%s sta:0x%04x>", __func__, sta);
+    if(BLE_SUCCESS == sta){
+        buildSrv_isSec_enc = 1;
+    }
+    else{
+        buildSrv_isSec_enc = -1;
+    }
+    APP_LOG_DEBUG("</%s buildSrv_isSec_enc:%d >", __func__,buildSrv_isSec_enc);
 }
 
-static uint8_t buildSrv_isMtu_exchanged = 0;
+static int8_t buildSrv_isMtu_exchanged = 0;
 static void buildSrv_onMtu_exchanged(int32_t sta, void* e){
-    buildSrv_isMtu_exchanged++;
+    APP_LOG_DEBUG("<%s sta:0x%04x>", __func__, sta);
+    if(BLE_SUCCESS == sta){
+        buildSrv_isMtu_exchanged++;
+    }
+    else{
+        buildSrv_isMtu_exchanged = -1;
+    }
+    APP_LOG_DEBUG("</%s buildSrv_isMtu_exchanged:%d >", __func__, buildSrv_isMtu_exchanged);
 }
 
-static uint8_t buildSrv_isBrowsed0 = 0;
+static int8_t buildSrv_isBrowsed0 = 0;
 static void buildSrv_browsed0(int32_t sta, void* e){
-    buildSrv_isBrowsed0++;
+    APP_LOG_DEBUG("<%s sta:0x%04x>", __func__, sta);
+    if(BLE_SUCCESS == sta){
+        buildSrv_isBrowsed0 = 1;
+    }
+    else{
+        buildSrv_isBrowsed0 = -1;
+    }
+    APP_LOG_DEBUG("</%s buildSrv_isBrowsed0:%d >", __func__, buildSrv_isBrowsed0);
 }
 
-static uint8_t buildSrv_isBrowsed1 = 0;
+static int8_t buildSrv_isBrowsed1 = 0;
 static void buildSrv_browsed1(int32_t sta, void* e){
-    buildSrv_isBrowsed1++;
+    APP_LOG_DEBUG("<%s sta:0x%04x>", __func__, sta);
+    if(BLE_SUCCESS == sta){
+        buildSrv_isBrowsed1 = 1;
+    }
+    else{
+        buildSrv_isBrowsed1 = -1;
+    }
+    APP_LOG_DEBUG("</%s buildSrv_isBrowsed1:%d >", __func__, buildSrv_isBrowsed1);
 }
 
-static uint8_t buildSrv_isBrowsed2 = 0;
+static int8_t buildSrv_isBrowsed2 = 0;
 static void buildSrv_browsed2(int32_t sta, void* e){
-    buildSrv_isBrowsed2++;
+    APP_LOG_DEBUG("<%s sta:0x%04x>", __func__, sta);
+    if(BLE_SUCCESS == sta){
+        buildSrv_isBrowsed2 = 1;
+    }
+    else{
+        buildSrv_isBrowsed2 = -1;
+    }
+    APP_LOG_DEBUG("</%s buildSrv_isBrowsed2:%d >", __func__, buildSrv_isBrowsed2);
 }
 
 static void tmrHandle(void* p_ctx){
+    APP_LOG_DEBUG("<%s buildSqu:%d >", __func__, buildSqu);
     sdk_err_t error_code;
-    
     buildTick += BUILD_TICK;
     
     switch(buildSqu){
@@ -148,46 +174,41 @@ static void tmrHandle(void* p_ctx){
             error_code =  xBleGap_connect(buildMAC);
             APP_ERROR_CHECK(error_code);
             if(error_code == SDK_SUCCESS){
-                evntConnected.addListener(&evntConnected.rsrc, buildSrv_onDisconnected);
+                evntBindListener(BIND_CONNECTED, buildSrv_onConnected);
+                evntBindListener(BIND_MTU_EXCHANGED, buildSrv_onMtu_exchanged); // in case the peer will toggle it
                 buildSqu ++;
                 buildTick = 0;
-                // in case the peer will toggle it
-                evntBleMtu_exchanged.addListener(&evntBleMtu_exchanged.rsrc, buildSrv_onMtu_exchanged);
                 break;
             }
-            if(cmplt_buildSrvs){
-                cmplt_buildSrvs(-1, NULL);
-            }
-            buildSqu = 0;
+            terminate_buildSrvProc(-100, NULL);
             break;
         }
         
         case 2:{
-            if(buildSrv_isConnected){
-                evntConnected.removeListener(&evntConnected.rsrc, buildSrv_onDisconnected);
+            if(buildSrv_isConnected == 1){
+                evntRemoveListener(BIND_CONNECTED, buildSrv_onConnected);
                 error_code = ble_sec_enc_start(0);    // here needs secure
                 APP_ERROR_CHECK(error_code);
                 if(error_code == SDK_SUCCESS){
-                    evntBleSecEnc.addListener(&evntBleSecEnc.rsrc, buildSrv_onSec_enc);
+                    evntBindListener(BIND_SEC_RCV_ENC_IND, buildSrv_onSec_enc);
                     buildSqu ++;
                     buildTick = 0;
                     break;
                 }
-                if(cmplt_buildSrvs){
-                    cmplt_buildSrvs(-2, NULL);
-                }
-                buildSqu = 0;
+                terminate_buildSrvProc(-200, NULL);
             }
-            else if(buildTick > 3000){
-                cmplt_buildSrvs(-91, NULL);
-                buildSqu = 0;
+            else if(buildSrv_isConnected == -1){
+                terminate_buildSrvProc(-201, NULL);
+            }
+            else if(buildTick > 500){
+                terminate_buildSrvProc(-902, NULL);
             }
             break;
         }
             
         case 3:{
-            if(buildSrv_isSec_enc){
-                evntBleSecEnc.removeListener(&evntBleSecEnc.rsrc, buildSrv_onSec_enc);
+            if(buildSrv_isSec_enc == 1){
+                evntRemoveListener(BIND_SEC_RCV_ENC_IND, buildSrv_onSec_enc);
                 error_code = ble_gattc_mtu_exchange(0);
                 APP_ERROR_CHECK(error_code);
                 if(error_code == SDK_SUCCESS){
@@ -195,20 +216,19 @@ static void tmrHandle(void* p_ctx){
                     buildTick = 0;
                     break;
                 }
-                if(cmplt_buildSrvs){
-                    cmplt_buildSrvs(-3, NULL);
-                }
-                buildSqu = 0;
+                terminate_buildSrvProc(-300, NULL);
             }
-            else if(buildTick > 3000){
-                cmplt_buildSrvs(-91, NULL);
-                buildSqu = 0;
+            else if(buildSrv_isSec_enc == -1){
+                terminate_buildSrvProc(-301, NULL);
+            }
+            else if(buildTick > 500){
+                terminate_buildSrvProc(-903, NULL);
             }
             break;
         }
             
         case 4:{
-            if(buildSrv_isSec_enc >= 2){
+            if(buildSrv_isMtu_exchanged >= 2){
                 error_code = cSrvs[0].Browse(&cSrvs[0].rsrc, 0, buildSrv_browsed0);
                 APP_ERROR_CHECK(error_code);
                 if(error_code == SDK_SUCCESS){
@@ -216,20 +236,19 @@ static void tmrHandle(void* p_ctx){
                     buildTick = 0;
                     break;
                 }
-                if(cmplt_buildSrvs){
-                    cmplt_buildSrvs(-4, NULL);
-                }
-                buildSqu = 0;
+                terminate_buildSrvProc(-400, NULL);
             }
-            else if(buildTick > 3000){
-                cmplt_buildSrvs(-94, NULL);
-                buildSqu = 0;
+            else if(buildSrv_isMtu_exchanged == -1){
+                terminate_buildSrvProc(-401, NULL);
+            }
+            else if(buildTick > 500){
+                terminate_buildSrvProc(-904, NULL);
             }
             break;
         }
         
         case 5:{
-            if(buildSrv_isBrowsed0){
+            if(buildSrv_isBrowsed0 == 1){
                 error_code = cSrvs[1].Browse(&cSrvs[1].rsrc, 0, buildSrv_browsed1);
                 APP_ERROR_CHECK(error_code);
                 if(error_code == SDK_SUCCESS){
@@ -237,14 +256,13 @@ static void tmrHandle(void* p_ctx){
                     buildTick = 0;
                     break;
                 }
-                if(cmplt_buildSrvs){
-                    cmplt_buildSrvs(-5, NULL);
-                }
-                buildSqu = 0;
+                terminate_buildSrvProc(-500, NULL);
             }
-            else if(buildTick > 3000){
-                cmplt_buildSrvs(-95, NULL);
-                buildSqu = 0;
+            else if(buildSrv_isBrowsed0 == -1){
+                terminate_buildSrvProc(-501, NULL);
+            }
+            else if(buildTick > 500){
+                terminate_buildSrvProc(-905, NULL);
             }
             break;
         }
@@ -258,332 +276,29 @@ static void tmrHandle(void* p_ctx){
                     buildTick = 0;
                     break;
                 }
-                if(cmplt_buildSrvs){
-                    cmplt_buildSrvs(-6, NULL);
-                }
-                buildSqu = 0;
+                terminate_buildSrvProc(-600, NULL);
             }
-            else if(buildTick > 3000){
-                cmplt_buildSrvs(-96, NULL);
-                buildSqu = 0;
+            else if(buildSrv_isBrowsed1 == -1){
+                terminate_buildSrvProc(-601, NULL);
+            }
+            else if(buildTick > 500){
+                terminate_buildSrvProc(-906, NULL);
             }
             break;
         }
             
         case 7:{
             if(buildSrv_isBrowsed2){
-                if(cmplt_buildSrvs){
-                    cmplt_buildSrvs(0, NULL);
-                }
-                buildSqu = 0;
+                terminate_buildSrvProc(0, NULL);
             }
-            else if(buildTick > 3000){
-                cmplt_buildSrvs(-97, NULL);
-                buildSqu = 0;
+            else if(buildSrv_isBrowsed2 == -1){
+                terminate_buildSrvProc(-701, NULL);
+            }
+            else if(buildTick > 500){
+                terminate_buildSrvProc(-907, NULL);
             }
             break;
         }
     }
+    APP_LOG_DEBUG("</%s >", __func__);
 }
-
-
-/**
- *****************************************************************************************
- * @brief 
- *
- * @param[in]
- *
- * @return
- *****************************************************************************************
- */
-//static void buildServicesProc_1(s32 rslt, void* argv);
-//static void buildServicesProc_2(s32 rslt, void* argv);
-//static void buildServicesProc_2a(s32 rslt, void* argv);
-//static void buildServicesProc_3(s32 rslt, void* argv);
-//static void buildServicesProc_4(s32 rslt, void* argv);
-//static void buildServicesProc_5(s32 rslt, void* argv);
-//static void buildServicesProc_6(s32 rslt, void* argv);
-//static void buildServicesProc_7(s32 rslt, void* argv);
-//static void buildServicesProc_90(s32 rslt, void* argv);
-
-//static void buildServicesProc_2a_timeout(s32 rslt, void* argv);
-//static void buildServicesProc_3_timeout(s32 rslt, void* argv);
-//static void buildServicesProc_1a(s32 rslt, void* argv);
-
-//void buildServicesProc(CBx resolve, uint8_t *mac){
-//    APP_LOG_DEBUG("<%s cmplt_buildSrvs:0x%08x>", __func__, cmplt_buildSrvs);
-//    if(cmplt_buildSrvs){
-//        if(resolve){    resolve(-1000, NULL);    }
-//        cmplt_buildSrvs = NULL;    // here, make the last cmplt_buildSrvs can be executed
-//        return;
-//    }
-//    cmplt_buildSrvs = resolve;
-//    cmplt_BleGap_connect = NULL;
-//    cmplt_BleGap_disconnect = NULL;
-//    cmplt_BleGattc_mtu_exchange = NULL;
-//    cmplt_BleSec_enc_start = NULL;
-//    
-//    app_timer_stop(tmrID);
-//    timeoutHdl = buildSrvsProc_timeout;
-
-//    if(mac == NULL){
-//        cps4041.start_getMAC(&cps4041.rsrc, buildServicesProc_1a, 1);
-//        app_timer_start(tmrID, 20000, NULL);
-//    }
-//    else{
-//        memcpy(g_loadedMAC, mac, 6);
-//        g_loaded = 1;
-//        xBleGap_connect(g_loadedMAC, buildServicesProc_2);
-//        app_timer_start(tmrID, 4000, NULL);
-//    }
-//    
-//    APP_LOG_DEBUG("</%s >", __func__);
-//}
-
-//static void buildServicesProc_1a(s32 rslt, void* argv){
-//APP_LOG_DEBUG("<%s rslt:%d> ", __func__, rslt);    
-//    app_timer_stop(tmrID);
-//    cps4041.cbRegFetched(&cps4041.rsrc, NULL);
-//    if(rslt==0){
-//        cps4041.charger_dis(&cps4041.rsrc);
-//        cps4041.stop_getMAC(&cps4041.rsrc);
-//        cps4041.stop_getStatus(&cps4041.rsrc);
-//        g_loaded = 1;
-//        memcpy(g_loadedMAC, (u8*)argv, 6);
-//        timeoutHdl = buildServicesProc_1;
-//        app_timer_start(tmrID, 100, NULL);
-//    }
-//    else{
-//        g_loaded = 0;
-//        memset(g_loadedMAC, 0, 6);
-//        if(cmplt_buildSrvs){
-//            cmplt_buildSrvs(-1, NULL);
-//            cmplt_buildSrvs = NULL;
-//        }
-//    }
-//APP_LOG_DEBUG("</%s> ", __func__);
-//}
-
-//static void buildServicesProc_1(s32 rslt, void* argv){
-//APP_LOG_DEBUG("<%s rslt:%d cmplt_buildSrvs:0x%08x>", __func__, rslt, cmplt_buildSrvs);
-//    app_timer_stop(tmrID);
-//    if(rslt==0){
-//        timeoutHdl = buildSrvsProc_timeout;
-//        app_timer_start(tmrID, 10000, NULL);
-//        xBleGap_connect(g_loadedMAC, buildServicesProc_2);
-//    }
-//    else{
-//        g_loaded = 0;
-//        memset(g_loadedMAC, 0, 6);
-//        if(cmplt_buildSrvs){
-//            cmplt_buildSrvs(-1, NULL);
-//            cmplt_buildSrvs = NULL;
-//        }
-//    }
-//APP_LOG_DEBUG("</%s> ", __func__);
-//}
-
-//static void buildServicesProc_2(s32 rslt, void* argv){
-//APP_LOG_DEBUG("<%s rslt=0x%02x>", __func__, rslt);
-//    APP_LOG_DEBUG("<%s cmplt_buildSrvs:0x%08x>", __func__, cmplt_buildSrvs);
-//    if(rslt == 0){
-//        g_linked = 1;
-//        cmplt_BleSec_enc_start = buildServicesProc_2a;
-//        sdk_err_t error_code = ble_sec_enc_start(0);    // here needs secure, todo: add callback
-//        APP_ERROR_CHECK(error_code);
-//                
-//        if(error_code != SDK_SUCCESS){
-//            cmplt_BleSec_enc_start = NULL;
-//            if(cmplt_buildSrvs){
-//                cmplt_buildSrvs(-21, NULL);
-//                cmplt_buildSrvs = NULL;
-//            }
-//        }
-//        else{
-//            // here need a timer
-//            timeoutHdl = buildServicesProc_2a_timeout;
-//            app_timer_start(tmrID, 1000, NULL);            
-//        }
-//    }
-//    else{
-//        if(cmplt_buildSrvs){
-//            cmplt_buildSrvs(-2, NULL);    
-//            cmplt_buildSrvs = NULL;
-//        }
-//    }
-//APP_LOG_DEBUG("</%s>", __func__);
-//}
-
-//static void buildServicesProc_2a_timeout(s32 rslt, void* argv){
-//APP_LOG_DEBUG("<%s rslt=0x%02x>", __func__,rslt);
-//    if(cmplt_buildSrvs){
-//        cmplt_buildSrvs(-21, NULL);    
-//        cmplt_buildSrvs = NULL;
-//    }    
-//APP_LOG_DEBUG("</%s >", __func__);    
-//}
-
-//static void buildServicesProc_2a(s32 rslt, void* argv){
-//APP_LOG_DEBUG("<%s rslt=0x%02x>", __func__,rslt);
-//    APP_LOG_DEBUG("<%s cmplt_buildSrvs:0x%08x>", __func__, cmplt_buildSrvs);
-//    if(rslt == 0){
-//        cmplt_BleGattc_mtu_exchange = buildServicesProc_3;
-//        sdk_err_t error_code = ble_gattc_mtu_exchange(0);
-//        APP_ERROR_CHECK(error_code);
-//        
-//        // here need a timer
-//        
-//        if(error_code != SDK_SUCCESS){
-//            cmplt_BleGattc_mtu_exchange = NULL;
-//            if(cmplt_buildSrvs){
-//                cmplt_buildSrvs(-21, NULL);
-//                cmplt_buildSrvs = NULL;
-//            }
-//        }
-//        else{
-//            // here need a timer
-//            timeoutHdl = buildServicesProc_3_timeout;
-//            app_timer_start(tmrID, 3000, NULL);            
-//        }
-//    }
-//    else{
-//        if(cmplt_buildSrvs){
-//            cmplt_buildSrvs(-2, NULL);
-//            cmplt_buildSrvs = NULL;
-//        }
-//    }
-//APP_LOG_DEBUG("</%s>", __func__);
-//}
-//static void buildServicesProc_3_timeout(s32 rslt, void* argv){
-//APP_LOG_DEBUG("<%s rslt=0x%02x>", __func__,rslt);
-//    if(cmplt_buildSrvs){
-//        cmplt_buildSrvs(-31, NULL);    
-//        cmplt_buildSrvs = NULL;
-//    }    
-//APP_LOG_DEBUG("</%s >", __func__);
-//}
-//static void buildServicesProc_3(s32 rslt, void* argv){
-//APP_LOG_DEBUG("<%s rslt:0x%02x>", __func__, rslt);
-//    APP_LOG_DEBUG("<%s cmplt_buildSrvs:0x%08x>", __func__, cmplt_buildSrvs);
-//    if(rslt == 0){
-//        sdk_err_t error_code = cSrvs[0].Browse(&cSrvs[0].rsrc, 0, buildServicesProc_4);
-//        APP_ERROR_CHECK(error_code);
-//    }
-//    else{
-//        if(cmplt_buildSrvs){
-//            cmplt_buildSrvs(-3, NULL);    
-//            cmplt_buildSrvs = NULL;
-//        }
-//    }
-//APP_LOG_DEBUG("</%s>", __func__);
-//}
-
-//static void buildServicesProc_4(s32 rslt, void* argv){
-//APP_LOG_DEBUG("<%s rslt:0x%02x>", __func__, rslt);
-//    APP_LOG_DEBUG("<%s cmplt_buildSrvs:0x%08x>", __func__, cmplt_buildSrvs);
-//    if(rslt == 0){
-//        sdk_err_t error_code = cSrvs[1].Browse(&cSrvs[1].rsrc, 0, buildServicesProc_5);
-//        APP_ERROR_CHECK(error_code);
-//    }
-//    else{
-//        if(cmplt_buildSrvs){
-//            cmplt_buildSrvs(-4, NULL);    
-//            cmplt_buildSrvs = NULL;
-//        }
-//    }
-//APP_LOG_DEBUG("</%s>", __func__);
-//}
-
-//static void buildServicesProc_5(s32 rslt, void* argv){
-//APP_LOG_DEBUG("<%s rslt:0x%02x>", __func__, rslt);
-//    APP_LOG_DEBUG("<%s cmplt_buildSrvs:0x%08x>", __func__, cmplt_buildSrvs);
-//    if(rslt == 0){
-//        sdk_err_t error_code = cSrvs[2].Browse(&cSrvs[2].rsrc, 0, buildServicesProc_90);
-//        APP_ERROR_CHECK(error_code);
-//    }
-//    else{
-//        if(cmplt_buildSrvs){
-//            cmplt_buildSrvs(-5, NULL);
-//            cmplt_buildSrvs = NULL;
-//        }
-//    }
-//APP_LOG_DEBUG("</%s>", __func__);
-//}
-
-//static void buildServicesProc_6(s32 rslt, void* argv){
-//APP_LOG_DEBUG("<%s rslt:0x%02x>", __func__, rslt);
-////    APP_LOG_DEBUG("<%s cmplt_buildSrvs:0x%08x>", __func__, cmplt_buildSrvs);
-////    if(rslt == 0){
-////        sdk_err_t error_code = userCSrv2.Browse(&userCSrv2.rsrc, 0, buildServicesProc_7);
-////        APP_ERROR_CHECK(error_code);
-////    }
-////    else{
-////        if(cmplt_buildSrvs){
-////            cmplt_buildSrvs(-5, NULL);
-////            cmplt_buildSrvs = NULL;
-////        }
-////    }
-//APP_LOG_DEBUG("</%s>", __func__);
-//}
-
-//static void buildServicesProc_7(s32 rslt, void* argv){
-//APP_LOG_DEBUG("<%s rslt:0x%02x>", __func__, rslt);
-////    APP_LOG_DEBUG("<%s cmplt_buildSrvs:0x%08x>", __func__, cmplt_buildSrvs);
-////    if(rslt == 0){
-////        sdk_err_t error_code = userCSrv3.Browse(&userCSrv3.rsrc, 0, buildServicesProc_90);
-////        APP_ERROR_CHECK(error_code);
-////    }
-////    else{
-////        if(cmplt_buildSrvs){
-////            cmplt_buildSrvs(-5, NULL);
-////            cmplt_buildSrvs = NULL;
-////        }
-////    }
-//APP_LOG_DEBUG("</%s>", __func__);
-//}
-
-
-
-//static void buildServicesProc_90(s32 rslt, void* argv){
-//APP_LOG_DEBUG("<%s rslt:0x%02x>", __func__, rslt);
-//    APP_LOG_DEBUG("<%s cmplt_buildSrvs:0x%08x>", __func__, cmplt_buildSrvs);
-//    if(rslt == 0){
-//        app_timer_stop(tmrID);    
-//        APP_LOG_DEBUG("<%s cmplt_buildSrvs:0x%08x>", __func__, cmplt_buildSrvs);
-//        if(cmplt_buildSrvs){
-//            g_linked = 1;
-//            cmplt_buildSrvs(0, g_loadedMAC);
-//            cmplt_buildSrvs = NULL;
-//            
-//            APP_LOG_DEBUG("<%s mac:'%02x:%02x:%02x:%02x:%02x:%02x>", __func__, 
-//                g_loadedMAC[5],
-//                g_loadedMAC[4],
-//                g_loadedMAC[3],
-//                g_loadedMAC[2],
-//                g_loadedMAC[1],
-//                g_loadedMAC[0]
-//            );
-//        }
-
-//    }
-//    else{
-//        if(cmplt_buildSrvs){
-//            cmplt_buildSrvs(-6, NULL);    
-//            cmplt_buildSrvs = NULL;
-//        }
-//    }
-//APP_LOG_DEBUG("</%s>", __func__);
-//}
-
-//void buildDisconnectCB(void){
-//APP_LOG_DEBUG("<%s>", __func__);
-//    memset(g_loadedMAC, 0, 6);
-//    g_linked = 0;
-//    memset(g_loadedMAC,0,6);
-//APP_LOG_DEBUG("</%s>", __func__);
-//}
-
-//void CB_cps4041CB_mac_removed(void* x){
-//APP_LOG_DEBUG("<%s>", __func__);
-//APP_LOG_DEBUG("</%s>", __func__);
-//}

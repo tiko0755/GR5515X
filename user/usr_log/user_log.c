@@ -43,7 +43,7 @@
 #include "app_log.h"
 
 // using maxeye_srvc2_char4_notify(uint8_t conn_idx, uint8_t *p_data, uint16_t length);
-#include "maxeye_private_services.h"
+//#include "maxeye_private_services.h"
 
 // using bleConnStatus
 #include "maxeye_ble.h"
@@ -65,18 +65,18 @@ void logX(const char* FORMAT_ORG, ...){
     if((logMask&(1U<<0)) == 0){  
         return;
     }
-	va_list ap;
-	char buf[MAX_CMD_LEN] = {0};
-	int16_t bytes;
-	//take string
-	va_start(ap, FORMAT_ORG);
-	bytes = vsnprintf(buf, MAX_CMD_LEN, FORMAT_ORG, ap);
-	va_end(ap);
+    va_list ap;
+    char buf[MAX_CMD_LEN] = {0};
+    int16_t bytes;
+    //take string
+    va_start(ap, FORMAT_ORG);
+    bytes = vsnprintf(buf, MAX_CMD_LEN, FORMAT_ORG, ap);
+    va_end(ap);
     if(bytes <= 0){
         return;
     }
     strcat(buf, "\r\n");
-	//send out by uart
+    //send out by uart
     APP_LOG_RAW_INFO(buf);  // SHOULD continue to try lower UART api
 }
 
@@ -84,17 +84,17 @@ void logX_raw(const char* FORMAT_ORG, ...){
     if((logMask&(1U<<0)) == 0){  
         return;
     }
-	va_list ap;
-	char buf[MAX_CMD_LEN] = {0};
-	int16_t bytes;
-	//take string
-	va_start(ap, FORMAT_ORG);
-	bytes = vsnprintf(buf, MAX_CMD_LEN, FORMAT_ORG, ap);
-	va_end(ap);
+    va_list ap;
+    char buf[MAX_CMD_LEN] = {0};
+    int16_t bytes;
+    //take string
+    va_start(ap, FORMAT_ORG);
+    bytes = vsnprintf(buf, MAX_CMD_LEN, FORMAT_ORG, ap);
+    va_end(ap);
     if(bytes <= 0){
         return;
     }
-	//send out by uart
+    //send out by uart
     APP_LOG_RAW_INFO(buf);  // SHOULD continue to try lower UART api
 }
 
@@ -102,18 +102,18 @@ void logXX(const char* FORMAT_ORG, ...){
     if(logMask==0){
         return;
     }
-	va_list ap;
-	char buf[MAX_CMD_LEN] = {0};
-	int16_t bytes;
-	//take string
-	va_start(ap, FORMAT_ORG);
-	bytes = vsnprintf(buf, MAX_CMD_LEN, FORMAT_ORG, ap);
-	va_end(ap);
+    va_list ap;
+    char buf[MAX_CMD_LEN] = {0};
+    int16_t bytes;
+    //take string
+    va_start(ap, FORMAT_ORG);
+    bytes = vsnprintf(buf, MAX_CMD_LEN, FORMAT_ORG, ap);
+    va_end(ap);
     if(bytes <= 0){
         return;
     }
     strcat(buf, "\r\n");
-	//send out by uart
+    //send out by uart
     if(logMask&(1U<<0)){
         APP_LOG_RAW_INFO(buf);  // SHOULD continue to try lower UART api
     }

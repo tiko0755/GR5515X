@@ -78,7 +78,7 @@ static sec_param_t s_sec_param =
 };
 
 CBx cmplt_BleGap_connect;
-CBx cmplt_BleGap_disconnect;
+//CBx cmplt_BleGap_disconnect;
 CBx cmplt_BleGattc_mtu_exchange;
 CBx cmplt_BleSec_enc_start;
 
@@ -248,7 +248,7 @@ void ble_init_cmp_callback(void)
 //}
 
 sdk_err_t xBleGap_connect(const uint8_t* macAddr){
-    APP_LOG_DEBUG("<%s mac:0x%02x:%02x:%02x:%02x:%02x:%02x:> ", __func__, macAddr[5],macAddr[4],macAddr[3],macAddr[2],macAddr[1],macAddr[0]);
+    APP_LOG_DEBUG("<%s mac:0x%02x%02x%02x%02x%02x%02x > ", __func__, macAddr[5],macAddr[4],macAddr[3],macAddr[2],macAddr[1],macAddr[0]);
     
     gap_init_param_t conn_param;
     conn_param.type                = GAP_INIT_TYPE_DIRECT_CONN_EST;
@@ -258,7 +258,7 @@ sdk_err_t xBleGap_connect(const uint8_t* macAddr){
     conn_param.sup_timeout         = 3000;
     conn_param.conn_timeout        = 0;
     conn_param.peer_addr.addr_type = 0;
-    memcpy(conn_param.peer_addr.gap_addr.addr, macAddr, 6);    
+    memcpy(conn_param.peer_addr.gap_addr.addr, macAddr, 6);
     sdk_err_t error_code = ble_gap_connect(BLE_GAP_OWN_ADDR_STATIC, &conn_param);
     APP_ERROR_CHECK(error_code);
     
@@ -273,7 +273,7 @@ void xBleGap_disconnect(CBx resolve){
         if(resolve){    resolve(-1000,NULL);    }
         return;
     }
-    cmplt_BleGap_disconnect = resolve;
+//    cmplt_BleGap_disconnect = resolve;
 }
 
 u8 cmd_BLE_GAPM(const uint8_t* cmd, u8 len, XPrint xprint){

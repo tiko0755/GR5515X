@@ -74,7 +74,7 @@ static u8 isCharger = 0;
 //static void charger(void);
 //static void discharger(void);
 
-static void buildServicesProc_cmplt(s32 rslt, void* argv);
+static void start_buildSrvProc_cmplt(s32 rslt, void* argv);
 static void proc_ReadCap_cmplt(s32 rslt, void* argv);
 //static void proc_vibrate_cmplt(s32 rslt, void* argv);
 //static void proc_vibrate_cmplt_sleep(s32 rslt, void* argv);
@@ -144,9 +144,11 @@ void capCtrl_onDisconnected(void){
 static void capCtrl_ledOff(void){
     ledSqu = 1;
 }
+
 static void capCtrl_ledOn(void){
     ledSqu = 2;
 }
+
 static void capCtrl_ledFlash(u16 interval){
     ledSqu = 5;
     ledTmr = interval;

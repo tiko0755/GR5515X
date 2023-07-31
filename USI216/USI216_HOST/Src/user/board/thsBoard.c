@@ -44,7 +44,7 @@
 #include "cap_ctrl.h"
 #include "test226_cmd.h"
 
-
+#include "listener_instance.h"
 #include "prvSrvUUID.h"
 
 /* import handle from main.c variables ----------------------------------------*/
@@ -114,8 +114,6 @@ u8 g_loadedMAC[6] = {0};
 u8 g_linked = {0};
 //u8 glinkedMAC[6] = {0};
 
-Listener_dev_t evntConnected, evntDisconnected;
-
 static void connectedTest1(int32_t sta, void* e);
 static void connectedTest2(int32_t sta, void* e);
 static void disconnectedTest1(int32_t sta, void* e);
@@ -141,13 +139,9 @@ void thsBoardInit(void){
     logInitial();
     app_assert_init();
     
-    setup_listener(&evntConnected, "connected");
-    setup_listener(&evntDisconnected, "disconnected");
-    
-    evntConnected.addListener(&evntConnected.rsrc, connectedTest1);
-    evntConnected.addListener(&evntConnected.rsrc, connectedTest2);
-    evntDisconnected.addListener(&evntDisconnected.rsrc, disconnectedTest1);
-    evntDisconnected.addListener(&evntDisconnected.rsrc, disconnectedTest2);
+    APP_LOG_RAW_INFO("evntListenerInit..%d..", sizeof(EVENT_BINDING_INIT));
+    evntListenerInit(EVENT_BINDING_INIT, sizeof(EVENT_BINDING_INIT));
+    APP_LOG_RAW_INFO("ok\r\n");
     
     // setup user components @CPS4041
     CPS4041_Setup(&cps4041,&gHandle_iic0,&WLC_nINT,&WLC_nPG,&WLC_nSLP,&WLC_nEN);
@@ -204,7 +198,7 @@ void thsBoardInit(void){
     consumer.append(&consumer.rsrc, test226_cmd);
     APP_LOG_RAW_INFO("add to consumer..ok\r\n");
 
-//    buildServicesProc_initial(NULL);
+//    start_buildSrvProc_initial(NULL);
     
     // ONLY used for capacity control
 //    capCtrlInitial(&cps4041, &LED, &battCSrv, &userCSrv);
@@ -214,6 +208,10 @@ void thsBoardInit(void){
     
     // start consumer timer
     consumer.start(&consumer.rsrc);
+    
+
+
+
     
     initialDone = 1;
     APP_LOG_RAW_INFO("initial done\r\n");
@@ -263,7 +261,7 @@ APP_LOG_DEBUG("</%s> ", __func__);
 }
 
 u8 brdCmd(const u8* cmd, u8 len, XPrint xprint){
-    s32 i=0,j=0;
+    s32 i=0,j=0,k;
     uint8_t buf[8] = {0};
     const char* CMD = (const char*)cmd;
 //    u8 buff[256] = {0};
@@ -296,12 +294,12 @@ u8 brdCmd(const u8* cmd, u8 len, XPrint xprint){
         xprint("+ok@cps4041.readreg(0x%04x,0x%02x%02x%02x%02x,%d)\r\n", i, buf[3],buf[2],buf[1],buf[0],j);
         return 1;
     }
-    else if(sscanf(CMD, "cps4041.writereg 0x%x 0x%x", &i, &j) == 2){
+    else if(sscanf(CMD, "cps4041.writereg 0x%x 0x%x %d", &i, &j, &k) == 3){
         buf[0] = j & 0xff;  j >>= 8;
         buf[1] = j & 0xff;  j >>= 8;
         buf[2] = j & 0xff;  j >>= 8;
         buf[3] = j & 0xff;
-        cps4041.WriteReg(&cps4041.rsrc, i, buf, 4);
+        cps4041.WriteReg(&cps4041.rsrc, i, buf, k);
         xprint("+ok@cps4041.writereg(0x%04x,0x%04x)\r\n", i, j);
         return 1;
     }

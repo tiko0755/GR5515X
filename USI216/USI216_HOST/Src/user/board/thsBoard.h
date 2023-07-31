@@ -12,8 +12,6 @@ filename: board.h
 #include "cmd_consumer.h"
 #include "serviceClient.h"
 
-#include "listener.h"
-
 /* expose variables ------------------*/
 extern const char ABOUT[];
 extern const char COMMON_HELP[];
@@ -23,11 +21,6 @@ extern u8 initialDone;
 extern u32 errorCode;
 extern u16 ledTickTmr;
 extern u8 ledFlshTz;
-
-extern Listener_dev_t evntConnected;
-extern Listener_dev_t evntDisconnected;
-extern Listener_dev_t  evntBleSecEnc;
-extern Listener_dev_t  evntBleMtu_exchanged;
 
 
 /* expose components ------------------*/

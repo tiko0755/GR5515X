@@ -16,37 +16,28 @@
  */
 #include "usr_typedef.h"
 
-#define LISTENER_MAX    (16)
 
 /*
  * typedef
  *****************************************************************************************
  */
-#pragma pack(push,4)		// push current align bytes, and then set 4 bytes align
+#pragma pack(push,4)        // push current align bytes, and then set 4 bytes align
 typedef struct {
-    CB2 listeners[LISTENER_MAX];
-    char evntName[16];
-}Listener_rsrc_t;
-
-typedef struct {
-    // resource
-    Listener_rsrc_t rsrc;
-    // api
-    int32_t (*addListener)(Listener_rsrc_t*, CB2 cb);
-    int32_t (*removeListener)(Listener_rsrc_t*, CB2 cb);
-    int32_t (*removeAllListeners)(Listener_rsrc_t*);
-    int32_t (*getListenersCount)(Listener_rsrc_t*);
-    int32_t (*emit)(Listener_rsrc_t* r, int32_t sta, void* e);
-}Listener_dev_t;
-
-#pragma pack(pop)		//recover align bytes from 4 bytes
-
+    const char EVENT_NAME[16];
+    uint8_t len;
+}EventBindingInit_t;
+#pragma pack(pop)           //recover align bytes from 4 bytes
 
 /*
  * GLOBAL FUNCTION DECLARATION
  *****************************************************************************************
  */
-void setup_listener(Listener_dev_t* dev, const char* EVENT_NAME);
+
+int32_t evntListenerInit(const EventBindingInit_t *p, uint8_t len);
+int32_t evntBindListener(const char* EVNT_NAME, CB2 cb);
+int32_t evntRemoveListener(const char* EVNT_NAME, CB2 cb);
+int32_t evntRemoveAllListeners(const char* EVNT_NAME);
+int32_t evntEmit(const char* EVNT_NAME, int32_t sta, void* e);
 
 #endif
 

@@ -91,7 +91,7 @@
 // <0=> DISABLE
 // <1=> ENABLE
 #ifndef APP_LOG_ENABLE
-#define APP_LOG_ENABLE          1
+#define APP_LOG_ENABLE          0
 #endif
 
 // <o> APP log port type

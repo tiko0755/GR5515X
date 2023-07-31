@@ -259,10 +259,7 @@ APP_LOG_DEBUG("<%s> ", __func__);
         userNtfCB = NULL;
         isProcBusy_user = 0;
     }
-    
-    
-    
-    
+
 APP_LOG_DEBUG("</%s>", __func__);
 }
 

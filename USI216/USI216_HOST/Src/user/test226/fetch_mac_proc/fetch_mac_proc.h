@@ -20,11 +20,11 @@
  * 0: unknown command
  *****************************************************************************************
  */
-void buildServicesProc_initial(
+void start_buildSrvProc_initial(
     u8* mac
 );
     
-void buildServicesProc(u8* mac, CBx resolve);
+void start_buildSrvProc(u8* mac, CBx resolve);
 
 #endif
 

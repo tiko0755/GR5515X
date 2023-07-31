@@ -44,7 +44,7 @@
 
 #include "user_app.h"
 #include "test226_rssi.h"
-#include "thsBoard.h"
+#include "listener_instance.h"
 
 /*
  * LOCAL FUNCTION DECLARATION
@@ -342,8 +342,8 @@ static void app_gap_connect_cb(uint8_t conn_idx, uint8_t status, const gap_conn_
 //        }
 //    }
 //    cmplt_BleGap_connect = NULL;
-    
-    evntConnected.emit(&evntConnected.rsrc, status, (void*)p_conn_param);
+
+    evntEmit(BIND_CONNECTED, status, (void*)p_conn_param);
     
 APP_LOG_DEBUG("</%s>", __func__);        
 }
@@ -360,23 +360,24 @@ APP_LOG_DEBUG("</%s>", __func__);
 static void app_gap_disconnect_cb(uint8_t conn_idx, uint8_t status, uint8_t reason)
 {
     APP_LOG_DEBUG("<%s>", __func__);
-    if (BLE_SUCCESS == status)
-    {
-        APP_LOG_INFO("Disconnected (0x%02X).", reason);
-        app_disconnected_handler(conn_idx, reason);
-        if(cmplt_BleGap_disconnect){
-            cmplt_BleGap_disconnect(0, (void*)&reason);
-        }
-    }
-    else{
-        if(cmplt_BleGap_disconnect){
-            cmplt_BleGap_disconnect(-1, NULL);
-        }
-    }
-    cmplt_BleGap_disconnect = NULL;
+//    
+//    if (BLE_SUCCESS == status)
+//    {
+//        APP_LOG_INFO("Disconnected (0x%02X).", reason);
+//        app_disconnected_handler(conn_idx, reason);
+//        if(cmplt_BleGap_disconnect){
+//            cmplt_BleGap_disconnect(0, (void*)&reason);
+//        }
+//    }
+//    else{
+//        if(cmplt_BleGap_disconnect){
+//            cmplt_BleGap_disconnect(-1, NULL);
+//        }
+//    }
+//    cmplt_BleGap_disconnect = NULL;
     
     uint8_t xReason = reason;
-    evntDisconnected.emit(&evntDisconnected.rsrc, status, (void*)&xReason);
+    evntEmit(BIND_DISCONNECTED, status, (void*)&xReason);
 }
 
 /**

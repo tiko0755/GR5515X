@@ -118,8 +118,8 @@ void CPS4041_Setup(
     app_timer_start(d->rsrc.tmrID, CPS4041_INTERVAL, &d->rsrc);
 }
 
-#define CPS4041_MAX_OUTPUT_MA  (300)  
-#define CPS4041_MAX_PING_MA  (100)  
+#define CPS4041_MAX_OUTPUT_MA  (1000)
+#define CPS4041_MAX_PING_MA  (400)  
 static void cps4041_init(cps4041_rsrc_t* r){
     uint8_t buf[4];
     // read version
@@ -138,15 +138,31 @@ static void cps4041_init(cps4041_rsrc_t* r){
     buf[0] = CPS4041_MAX_OUTPUT_MA & 0xff;  
     buf[1] = (CPS4041_MAX_OUTPUT_MA>>8) & 0xff;
     cps4041_WriteReg(r, 0x0098, buf, 2);
+    
+    // set min duty
+    buf[0] = 30;
+    cps4041_WriteReg(r, 0x009c, buf, 1);   
+    
+    // set fop_min frequency
+    buf[0] = 130;
+    cps4041_WriteReg(r, 0x009e, buf, 1);
+    
+    // set fop_max frequency
+    buf[0] = 140;
+    cps4041_WriteReg(r, 0x009f, buf, 1);   
+    
+    // set ping frequency
+    buf[0] = 140;  
+    cps4041_WriteReg(r, 0x00a0, buf, 1);
 
-//    // ping time, 50ms
+//    // ping time(90), 90ms
 //    buf[0] = 50;  
 //    buf[1] = 0;
 //    cps4041_WriteReg(r, 0x00a2, buf, 2);
 
-//    // ping interval, 200ms
-//    buf[0] = 200;  
-//    buf[1] = 0;
+//    // ping interval(500), 500ms
+//    buf[0] = 200 & 0xff;
+//    buf[1] = (200 >>8);
 //    cps4041_WriteReg(r, 0x00a4, buf, 2);    
     
     // enable interrupts

@@ -51,7 +51,7 @@ typedef void (*GattcReadCB)(uint8_t conn_idx, uint8_t status, const ble_gattc_re
 extern GapConnectionUpdateCB gapConnectionUpdateHdlr;
 extern GattcReadCB xGattcReadCB;
 
-extern CBx cmplt_BleGap_disconnect;
+//extern CBx cmplt_BleGap_disconnect;
 extern CBx cmplt_BleGattc_mtu_exchange;
 extern CBx cmplt_BleSec_enc_start;
 /*
@@ -62,9 +62,6 @@ u8 cmd_BLE_GAPM(const uint8_t* cmd, u8 len, XPrint xprint);
 
 sdk_err_t xBleGap_connect(const uint8_t* macAddr);
 void xBleGap_disconnect(CBx resolve);
-
-
-void do_broadcast();
 
 /**
  *****************************************************************************************

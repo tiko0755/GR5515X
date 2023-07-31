@@ -21,14 +21,7 @@
  *****************************************************************************************
  */
  
-//void buildServicesProc_initial(u8* mac);
-    
-int32_t buildServicesProc(uint8_t *mac, CBx resolve);
-
-
-//void CB_cps4041CB_mac_removed(void*);
-
-//void buildDisconnectCB(void);
+int32_t start_buildSrvProc(uint8_t *mac, CBx resolve);
 
 #endif
 

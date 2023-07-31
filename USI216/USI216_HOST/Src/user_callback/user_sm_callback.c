@@ -41,7 +41,8 @@
  */
 #include "gr55xx_sys.h"
 #include "app_log.h"
-#include "user_app.h"
+#include "listener_instance.h"
+
 /*
 * LOCAL FUNCTION DECLARATION
 *****************************************************************************************
@@ -92,10 +93,11 @@ APP_LOG_DEBUG("</%s>", __func__);
 static void app_sec_rcv_enc_ind_cb(uint8_t conn_idx, sec_enc_ind_t enc_ind, uint8_t auth)
 {
 APP_LOG_DEBUG("<%s>", __func__);
-    if(cmplt_BleSec_enc_start){
-        cmplt_BleSec_enc_start(0, NULL);
-        cmplt_BleSec_enc_start = NULL;
-    }
+    evntEmit(BIND_SEC_RCV_ENC_IND, 0, NULL);
+//    if(cmplt_BleSec_enc_start){
+//        cmplt_BleSec_enc_start(0, NULL);
+//        cmplt_BleSec_enc_start = NULL;
+//    }
 APP_LOG_DEBUG("</%s>", __func__);
 }
 
