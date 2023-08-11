@@ -50,7 +50,7 @@
  *****************************************************************************************
  */
 /**@brief Gapm config data. */
-#define DEVICE_NAME                        "Goodix_Tem" /**< Device Name which will be set in GAP. */
+#define DEVICE_NAME                        "TEST216"    /**< Device Name which will be set in GAP. */
 #define APP_ADV_FAST_MIN_INTERVAL          32           /**< The fast advertising min interval (in units of 0.625 ms). */
 #define APP_ADV_FAST_MAX_INTERVAL          48           /**< The fast advertising max interval (in units of 0.625 ms). */
 #define APP_ADV_SLOW_MIN_INTERVAL          160          /**< The slow advertising min interval (in units of 0.625 ms). */
@@ -60,6 +60,23 @@
 #define MAX_CONN_INTERVAL                  50          /**< Maximum acceptable connection interval (0.65 second). */
 #define SLAVE_LATENCY                      0            /**< Slave latency. */
 #define CONN_SUP_TIMEOUT                   500          /**< Connection supervisory timeout (5 seconds). */
+
+
+#define APP_SCAN_INTERVAL                   15          /**< Determines scan interval(in units of 0.625 ms). */
+#define APP_SCAN_WINDOW                     15          /**< Determines scan window(in units of 0.625 ms). */
+#define APP_SCAN_DURATION                   0//2000          /**< Duration of the scanning(in units of 10 ms). */
+#define APP_CONN_INTERVAL_MIN               12              /**< Minimal connection interval(in unit of 1.25ms). */
+#define APP_CONN_INTERVAL_MAX               12              /**< Maximal connection interval(in unit of 1.25ms). */
+#define APP_CONN_SLAVE_LATENCY              0               /**< Slave latency. */
+#define APP_CONN_SUP_TIMEOUT                400             /**< Connection supervisory timeout(in unit of 10 ms). */
+
+#define MAX_MTU_DEFUALT                     247             /**< Defualt length of maximal MTU acceptable for device. */
+#define MAX_MPS_DEFUALT                     247              /**< Defualt length of maximal packet size acceptable for device. */
+#define MAX_NB_LECB_DEFUALT                 10              /**< Defualt length of maximal number of LE Credit based connection. */
+#define MAX_TX_OCTET_DEFUALT                251             /**< Default maximum transmitted number of payload octets. */
+#define MAX_TX_TIME_DEFUALT                 2120            /**< Defualt maximum packet transmission time. */
+
+
 
 
 /*
@@ -138,7 +155,27 @@ static void gap_params_init(void)
     ble_gap_bond_devs_clear();
     ble_gap_pair_enable(true);
     ble_sec_params_set(&s_sec_param);
-    ble_gap_device_name_set(BLE_GAP_WRITE_PERM_DISABLE, (const uint8_t*)"TEST226", strlen("TEST226"));
+    ble_gap_device_name_set(BLE_GAP_WRITE_PERM_DISABLE, (const uint8_t*)DEVICE_NAME, strlen(DEVICE_NAME));
+    
+    sdk_err_t   error_code;
+    gap_scan_param_t scan_param;
+
+    scan_param.scan_type     = GAP_SCAN_ACTIVE;
+    scan_param.scan_mode     = GAP_SCAN_OBSERVER_MODE;
+    scan_param.scan_dup_filt = GAP_SCAN_FILT_DUPLIC_EN;
+    scan_param.use_whitelist = false;
+    scan_param.interval      = APP_SCAN_INTERVAL;
+    scan_param.window        = APP_SCAN_WINDOW;
+    scan_param.timeout       = APP_SCAN_DURATION;
+
+    error_code = ble_gap_scan_param_set(BLE_GAP_OWN_ADDR_STATIC, &scan_param);
+    APP_ERROR_CHECK(error_code);
+
+    error_code = ble_gap_l2cap_params_set(MAX_MTU_DEFUALT, MAX_MPS_DEFUALT, MAX_NB_LECB_DEFUALT);
+    APP_ERROR_CHECK(error_code);
+    
+    
+    
 }
 
 
@@ -259,6 +296,9 @@ sdk_err_t xBleGap_connect(const uint8_t* macAddr){
     conn_param.conn_timeout        = 0;
     conn_param.peer_addr.addr_type = 0;
     memcpy(conn_param.peer_addr.gap_addr.addr, macAddr, 6);
+    
+    
+    
     sdk_err_t error_code = ble_gap_connect(BLE_GAP_OWN_ADDR_STATIC, &conn_param);
     APP_ERROR_CHECK(error_code);
     
@@ -342,7 +382,39 @@ u8 cmd_BLE_GAPM(const uint8_t* cmd, u8 len, XPrint xprint){
     return 0;
 }
 
+/**
+ *****************************************************************************************
+ * @brief 
+ *
+ * @param[in]
+ *
+ * @return 
+ *****************************************************************************************
+ */
+void app_adv_report_handler(uint8_t rssi,const uint8_t *p_data, uint16_t length, const gap_bdaddr_t *p_bdaddr)
+{
+    sdk_err_t        error_code;
 
+    APP_LOG_RAW_INFO("adv data:");
+    for(uint8_t i=0; i<length; i++)
+    {
+        APP_LOG_RAW_INFO(" %02x ",p_data[i]);
+    }
+    APP_LOG_RAW_INFO("\r\n");
+
+    APP_LOG_RAW_INFO("adv addr: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\r\n",
+        p_bdaddr->gap_addr.addr[5],
+        p_bdaddr->gap_addr.addr[4],
+        p_bdaddr->gap_addr.addr[3],
+        p_bdaddr->gap_addr.addr[2],
+        p_bdaddr->gap_addr.addr[1],
+        p_bdaddr->gap_addr.addr[0]); 
+    
+//    error_code = ble_gap_scan_stop();
+//    APP_ERROR_CHECK(error_code);
+    
+       
+}
 
 void do_broadcast(){
     sdk_err_t error_code;

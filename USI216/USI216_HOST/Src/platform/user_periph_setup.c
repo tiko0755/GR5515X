@@ -53,8 +53,9 @@ const PIN_T WLC_nINT = {WLC_nINT_GPIO_Port, WLC_nINT_Pin};
 const PIN_T WLC_nEN = {WLC_nEN_GPIO_Port, WLC_nEN_Pin};
 const PIN_T WLC_nPG = {WLC_nPG_GPIO_Port, WLC_nPG_Pin};
 const PIN_T WLC_nSLP = {WLC_nSLP_GPIO_Port, WLC_nSLP_Pin};
-const PIN_T LED = {LED_GPIO_Port, LED_Pin};
 
+const PIN_T RUNNING = {RUNNING_GPIO_Port, RUNNING_Pin};
+const PIN_T LED_CHG = {LED_CHG_GPIO_Port, LED_CHG_Pin};
 /*
  * LOCAL VARIABLE DEFINITIONS
  *****************************************************************************************
@@ -81,7 +82,8 @@ void app_periph_init(void){
 static void MX_GPIO_Init(void){
     /*Configure GPIO pin Output Level */
     hal_gpio_write_pin(WLC_nEN_GPIO_Port, WLC_nEN_Pin, GPIO_PIN_RESET);    
-    hal_gpio_write_pin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);    // turn off
+    hal_gpio_write_pin(RUNNING.port, RUNNING.pin, GPIO_PIN_SET);    // turn off
+    hal_gpio_write_pin(LED_CHG.port, LED_CHG.pin, GPIO_PIN_RESET);    // turn off
     
     gpio_init_t gpio_config = GPIO_DEFAULT_CONFIG;
     
@@ -111,9 +113,15 @@ static void MX_GPIO_Init(void){
     
     // output
     gpio_config.mode = GPIO_MODE_OUTPUT;
-    gpio_config.pin  = LED_Pin;
+    gpio_config.pin  = RUNNING.pin;
     gpio_config.pull = GPIO_NOPULL;
-    hal_gpio_init(LED_GPIO_Port, &gpio_config);    
+    hal_gpio_init(RUNNING.port, &gpio_config);    
+    
+    // output
+    gpio_config.mode = GPIO_MODE_OUTPUT;
+    gpio_config.pin  = LED_CHG.pin;
+    gpio_config.pull = GPIO_NOPULL;
+    hal_gpio_init(LED_CHG.port, &gpio_config); 
     
     /* Enable interrupt */
     hal_nvic_clear_pending_irq(GPIO_GET_IRQNUM(GPIO0));

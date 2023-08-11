@@ -56,7 +56,8 @@ extern const PIN_T WLC_nSLP;
 
 // gpio_output
 extern const PIN_T WLC_nEN;
-extern const PIN_T LED;
+extern const PIN_T RUNNING;
+extern const PIN_T LED_CHG;
 
 /**
  *****************************************************************************************

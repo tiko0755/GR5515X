@@ -58,7 +58,7 @@ typedef struct{
 #define SCHEDULER_SZ (64)
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-const char ABOUT[] = {"USI226_ASBL_V1.6 PRODUCT"};
+const char ABOUT[] = {"USI216_CAP_CTRL_V0.01"};
 const char COMMON_HELP[] = {
     "common help:"
     "\n pen.debug"
@@ -84,6 +84,10 @@ u32 errorCode;            // = 0;
 
 u16 ledTickTmr = 128;
 u8 ledFlshTz = 0;
+
+#define THS_BOARD_POLLING_TIM   (20)
+static app_timer_id_t thsBoardTmrID;
+static void thsBoardTask(void* e);
 
 // cps4041
 cps4041_dev_t cps4041 = {0};
@@ -139,6 +143,9 @@ void thsBoardInit(void){
     logInitial();
     app_assert_init();
     
+    error_code = app_timer_create(&thsBoardTmrID, ATIMER_REPEAT, thsBoardTask);    
+    app_timer_start(thsBoardTmrID, THS_BOARD_POLLING_TIM, NULL);
+
     APP_LOG_RAW_INFO("evntListenerInit..%d..", sizeof(EVENT_BINDING_INIT));
     evntListenerInit(EVENT_BINDING_INIT, sizeof(EVENT_BINDING_INIT));
     APP_LOG_RAW_INFO("ok\r\n");
@@ -201,17 +208,13 @@ void thsBoardInit(void){
 //    start_buildSrvProc_initial(NULL);
     
     // ONLY used for capacity control
-//    capCtrlInitial(&cps4041, &LED, &battCSrv, &userCSrv);
+    capCtrlInitial(&cps4041, &LED_CHG, cSrvs);
     
     // start to receive
     console.StartRcv(&console.rsrc);
     
     // start consumer timer
     consumer.start(&consumer.rsrc);
-    
-
-
-
     
     initialDone = 1;
     APP_LOG_RAW_INFO("initial done\r\n");
@@ -454,6 +457,15 @@ static void disconnectedTest1(int32_t sta, void* e){
 }
 static void disconnectedTest2(int32_t sta, void* e){
     APP_LOG_DEBUG("<%s sta:%d >", __func__,sta);
+}
+
+static uint32_t thsBoardTick = 0;
+static void thsBoardTask(void* e){
+    thsBoardTick += THS_BOARD_POLLING_TIM;
+    if(thsBoardTick > 100){
+        thsBoardTick = 0;
+        hal_gpio_toggle_pin(RUNNING.port, RUNNING.pin);
+    }
 }
 
 

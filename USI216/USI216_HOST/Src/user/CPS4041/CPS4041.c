@@ -10,7 +10,7 @@ filename: CPS4041.c
 
 #include "thsBoard.h"
 
-#define CPS4041_INTERVAL    10
+#define CPS4041_INTERVAL    50
 
 #define CPS4041_7BIT_ADDR 0x30  //0x30 for CPS4041
 
@@ -140,7 +140,7 @@ static void cps4041_init(cps4041_rsrc_t* r){
     cps4041_WriteReg(r, 0x0098, buf, 2);
     
     // set min duty
-    buf[0] = 30;
+    buf[0] = 20;
     cps4041_WriteReg(r, 0x009c, buf, 1);   
     
     // set fop_min frequency
@@ -153,17 +153,7 @@ static void cps4041_init(cps4041_rsrc_t* r){
     
     // set ping frequency
     buf[0] = 140;  
-    cps4041_WriteReg(r, 0x00a0, buf, 1);
-
-//    // ping time(90), 90ms
-//    buf[0] = 50;  
-//    buf[1] = 0;
-//    cps4041_WriteReg(r, 0x00a2, buf, 2);
-
-//    // ping interval(500), 500ms
-//    buf[0] = 200 & 0xff;
-//    buf[1] = (200 >>8);
-//    cps4041_WriteReg(r, 0x00a4, buf, 2);    
+    cps4041_WriteReg(r, 0x00a0, buf, 1);  
     
     // enable interrupts
     uint32_t data = 0x1ff;
@@ -180,8 +170,7 @@ static void cps4041_nINT_event(cps4041_rsrc_t* r, gpio_regs_t *GPIOx, uint16_t g
     
     if(r->nINT==NULL){return;}
     if((GPIOx!=r->nINT->port)||(gpio_pin!=r->nINT->pin)){ return;}
-    if(r->evnt_nINT){r->evnt_nINT((void*)r);}   // roll back to itself
-    
+   
     uint32_t flag = cps4041_get_int_flag(r);
     cps4041_clear_int_flag(r, flag);
     cps4041_ReadReg(r, 0x0104, buff, 2);
@@ -191,6 +180,9 @@ static void cps4041_nINT_event(cps4041_rsrc_t* r, gpio_regs_t *GPIOx, uint16_t g
     r->intFlags[1] = r->intFlags[0];
     r->intFlags[0] = flag & 0xffff;
     r->intPending = 1;
+    
+     if(r->evnt_nINT){r->evnt_nINT((void*)r);}   // roll back to itself
+     
     APP_LOG_DEBUG("<%s flag:0x%04x intPending:%d output:%d>", __func__, flag, r->intPending, ma);
 }
 
@@ -198,15 +190,92 @@ static void cps4041_start_getMAC(cps4041_rsrc_t* r, CB2 cmplt, u8 nextChrg){
     APP_LOG_DEBUG("<%s >", __func__);
     r->getMacCmplt = cmplt;
     r->getMacSqu = 1;
+    r->pktRcved = 0;
+    memset(r->askRcvBuf, 0, sizeof(r->askRcvBuf));
     r->getMacTmrHandler = cps4041_getMAC_tmrHandler;    // MUST put it at the end of this function
     APP_LOG_DEBUG("</%s >", __func__);
 }
 
+static int32_t cps4041_takeGoodPacket(cps4041_rsrc_t* r, uint8_t* buff, uint8_t len){
+    if(buff[0] != 0x48){
+        return -1;
+    }
+    if(buff[1]==0xc1){
+        memcpy(&r->askRcvBuf[0], &buff[2], 3);
+        r->pktRcved |= BIT(0);
+    }
+    else if(buff[1]==0xb6){
+        memcpy(&r->askRcvBuf[3], &buff[2], 3);
+        r->pktRcved |= BIT(1);
+    }
+    else if(buff[1]==0xb7){
+        memcpy(&r->askRcvBuf[6], &buff[2], 3);
+        r->pktRcved |= BIT(2);
+    }
+
+    if((r->pktRcved&0x07)==0x07){
+        uint8_t checkPass, checkX, checkCode, *p = r->askRcvBuf;
+        // check code
+        for(checkPass=0;;){
+            checkX = p[3]^p[6];
+            checkCode = ((checkX & 0x0F) << 4) | ((checkX & 0xF0) >> 4);
+            if(p[0] != checkCode){
+                break;
+            }
+            checkX = p[4]^p[7];
+            checkCode = ((checkX & 0x0F) << 4) | ((checkX & 0xF0) >> 4);
+            if(p[1] != checkCode){
+                break;
+            }   
+            checkX = p[5]^p[8];
+            checkCode = ((checkX & 0x0F) << 4) | ((checkX & 0xF0) >> 4);
+            if(p[2] != checkCode){
+                break;
+            }
+            checkPass = 1;
+            break;
+        }
+        // decode
+        if(checkPass){
+            r->mac[0] = ((p[3]&0x0f)<<4)|((p[6]&0xf0)>>4);  // 3L6H, (p[3] lower 4bits):(p[6] upper 4bits)
+            r->mac[1] = ((p[4]&0x0f)<<4)|((p[7]&0xf0)>>4);  // 4L7H
+            r->mac[2] = ((p[5]&0x0f)<<4)|((p[8]&0xf0)>>4);  // 5L8H
+            r->mac[3] = ((p[6]&0x0f)<<4)|((p[3]&0xf0)>>4);  // 6L3H
+            r->mac[4] = ((p[7]&0x0f)<<4)|((p[4]&0xf0)>>4);  // 7L4H
+            r->mac[5] = ((p[8]&0x0f)<<4)|((p[5]&0xf0)>>4);  // 8L5H
+            APP_LOG_DEBUG("check pass: %02X:%02X:%02X:%02X:%02X:%02X\n", r->mac[5],r->mac[4],r->mac[3],r->mac[2],r->mac[1],r->mac[0]);
+            return 0;
+//            r->getMacSqu = 0;
+//            r->getMacTmrHandler = NULL;
+//            if(r->getMacCmplt){
+//                r->getMacCmplt(0, r->mac);
+//            }
+        }
+//        else{
+//            APP_LOG_DEBUG("<%s 'check_fail, restart' >", __func__);
+////            r->getMacSqu = 1;
+////            cps4041_charger_dis(r);
+//            return -2;
+//        }
+    }
+    // miss soem packet, restart
+    else if(buff[1]==0xb7){
+//        r->getMacSqu = 1;
+//        cps4041_charger_dis(r);
+        return -2;
+    }
+    return 1;
+}
+
+
 static void cps4041_getMAC_tmrHandler(void* p_ctx){
     uint8_t buff[16];
+    int32_t pkt_rtn;
     cps4041_rsrc_t* r = p_ctx;
     APP_LOG_DEBUG("<%s getMacSqu:%d intPending:%d>", __func__, r->getMacSqu, r->intPending);
+    
     r->getMacTmr += CPS4041_INTERVAL;
+    r->tick += CPS4041_INTERVAL;
     
     switch (r->getMacSqu){
         case 0:     // idle
@@ -214,14 +283,15 @@ static void cps4041_getMAC_tmrHandler(void* p_ctx){
         
         case 1:
             r->getMacTmr = 0;
-            r->getMacTimeout = 10000;
+            r->getMacTimeout = 5000;
             r->intPending = 0;
-            r->pktRcved = 0;
-            memset(r->askRcvBuf, 0, sizeof(r->askRcvBuf));
             r->getMacSqu++;
+            cps4041_sys_reset(r);
+            r->tick = 0;
             break;
         
         case 2:     // wait 0x0020 and req first packet
+            // intPending will be updated in ISR, asynchrous
             APP_LOG_DEBUG("<%s intPending:%d >", __func__, r->intPending);
             if(r->intPending == 0){
                 break;
@@ -230,11 +300,47 @@ static void cps4041_getMAC_tmrHandler(void* p_ctx){
             // intPending is updated asynchrous
             APP_LOG_DEBUG("<%s intFlags:%d >", __func__, r->intFlags[0]);
             if(r->intFlags[0] & (1U<<5)){
-                buff[0] = 0x1E;
-                buff[1] = 0xff;
-                cps4041_send_fsk_data(r, buff, 2);
-                r->intPending = 0;
-                r->getMacSqu++;
+                // to tell that, attachment has been sensed, 
+                if(r->getMacCmplt){
+                    r->getMacCmplt(1, r->mac);
+                }
+                // read ppp data. in case the peer send packet without request
+                cps4041_get_ppp_data(r, buff);
+                APP_LOG_DEBUG(":::%04x: 0x%02x %02x %02x %02x %02x %02x", r->intFlags[0], buff[0],buff[1],buff[2],buff[3],buff[4],buff[5]);
+                
+                pkt_rtn = cps4041_takeGoodPacket(r, buff, 16);
+                if(pkt_rtn == 0){   // good packet, and check pass. terminate process
+                    r->getMacSqu = 0;
+                    r->getMacTmrHandler = NULL; // terminate process
+                    if(r->getMacCmplt){
+                        r->getMacCmplt(0, r->mac);
+                    }
+                }
+                else if(pkt_rtn == -1){ // invalid packet
+                    buff[0] = 0x1E;
+                    buff[1] = 0xff;
+                    cps4041_send_fsk_data(r, buff, 2);
+//                    r->intPending = 0;
+                    r->getMacSqu++;
+                    r->tick = 0;
+                }
+                else if(pkt_rtn == -2){ // last packet, but missing some previous packets, will restart from step 1
+                    r->getMacSqu = 1;
+                    cps4041_charger_dis(r);
+                }
+                else if(pkt_rtn == 1){ // good packet, continue to request next packet
+                    buff[0] = 0x1E;
+                    buff[1] = 0xff;
+                    cps4041_send_fsk_data(r, buff, 2);
+//                    r->intPending = 0;
+                    r->getMacSqu++;
+                    r->tick = 0;
+                }
+            }
+            // if unloaded, return as soon as possible
+            else if(r->tick > 2000){
+                r->getMacTmrHandler = NULL; // terminate process
+                r->getMacCmplt(-1, r->mac);
             }
             break;
             
@@ -247,76 +353,31 @@ static void cps4041_getMAC_tmrHandler(void* p_ctx){
             cps4041_get_ppp_data(r, buff);
             APP_LOG_DEBUG("%04x: 0x%02x %02x %02x %02x %02x %02x", r->intFlags[0], buff[0],buff[1],buff[2],buff[3],buff[4],buff[5]);
 
-            if(buff[0]==0x48){
-                if(buff[1]==0xc1){
-                    memcpy(&r->askRcvBuf[0], &buff[2], 3);
-                    r->pktRcved |= BIT(0);
+            pkt_rtn = cps4041_takeGoodPacket(r, buff, 16);
+            if(pkt_rtn == 0){   // good packet, and check pass. terminate process
+                r->getMacSqu = 0;
+                r->getMacTmrHandler = NULL;
+                if(r->getMacCmplt){
+                    r->getMacCmplt(0, r->mac);
                 }
-                else if(buff[1]==0xb6){
-                    memcpy(&r->askRcvBuf[3], &buff[2], 3);
-                    r->pktRcved |= BIT(1);
-                }
-                else if(buff[1]==0xb7){
-                    memcpy(&r->askRcvBuf[6], &buff[2], 3);
-                    r->pktRcved |= BIT(2);
-                }
-                if((r->pktRcved&0x07)==0x07){
-                    uint8_t checkPass, checkX, checkCode, *p = r->askRcvBuf;
-                    // check code
-                    for(checkPass=0;;){
-                        checkX = p[3]^p[6];
-                        checkCode = ((checkX & 0x0F) << 4) | ((checkX & 0xF0) >> 4);
-                        if(p[0] != checkCode){
-                            break;
-                        }
-                        checkX = p[4]^p[7];
-                        checkCode = ((checkX & 0x0F) << 4) | ((checkX & 0xF0) >> 4);
-                        if(p[1] != checkCode){
-                            break;
-                        }   
-                        checkX = p[5]^p[8];
-                        checkCode = ((checkX & 0x0F) << 4) | ((checkX & 0xF0) >> 4);
-                        if(p[2] != checkCode){
-                            break;
-                        }
-                        checkPass = 1;
-                        break;
-                    }
-                    // decode
-                    if(checkPass){
-                        r->mac[0] = ((p[3]&0x0f)<<4)|((p[6]&0xf0)>>4);  // 3L6H, (p[3] lower 4bits):(p[6] upper 4bits)
-                        r->mac[1] = ((p[4]&0x0f)<<4)|((p[7]&0xf0)>>4);  // 4L7H
-                        r->mac[2] = ((p[5]&0x0f)<<4)|((p[8]&0xf0)>>4);  // 5L8H
-                        r->mac[3] = ((p[6]&0x0f)<<4)|((p[3]&0xf0)>>4);  // 6L3H
-                        r->mac[4] = ((p[7]&0x0f)<<4)|((p[4]&0xf0)>>4);  // 7L4H
-                        r->mac[5] = ((p[8]&0x0f)<<4)|((p[5]&0xf0)>>4);  // 8L5H
-                        APP_LOG_DEBUG("check pass: %02X:%02X:%02X:%02X:%02X:%02X\n", r->mac[5],r->mac[4],r->mac[3],r->mac[2],r->mac[1],r->mac[0]);
-                        r->getMacSqu = 0;
-                        r->getMacTmrHandler = NULL;
-                        if(r->getMacCmplt){
-                            r->getMacCmplt(0, r->mac);
-                        }
-                        
-                        APP_LOG_DEBUG("</%s >", __func__);
-                        return;
-                    }
-                    else{
-                        APP_LOG_DEBUG("<%s 'check_fail' >", __func__);
-                    }
-                }   
             }
-            if((r->pktRcved&0x07)==0x07){}
-            else{
+            else if(pkt_rtn == -1){ // invalid packet
                 buff[0] = 0x1E;
-                buff[1] = 0xFF;
+                buff[1] = 0xff;
                 cps4041_send_fsk_data(r, buff, 2);
-                r->intPending = 0;
+//                r->intPending = 0;
             }
-            break;
-            
-        case 4:
-            break;
-        case 5:
+            else if(pkt_rtn == -2){ // last packet, but missing some previous packets, will restart from step 1
+                r->getMacSqu = 1;
+                cps4041_charger_dis(r);
+            }
+            else if(pkt_rtn == 1){ // good packet, continue to request next packet
+                buff[0] = 0x1E;
+                buff[1] = 0xff;
+                cps4041_send_fsk_data(r, buff, 2);
+//                r->intPending = 0;
+//                r->tick = 0;
+            }
             break;
     }
     

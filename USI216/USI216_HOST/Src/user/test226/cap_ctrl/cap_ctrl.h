@@ -23,11 +23,8 @@
 void capCtrlInitial(
     cps4041_dev_t* d, 
     const PIN_T* led,
-    bleClientSrv_dev_t* batt,
-    bleClientSrv_dev_t* user
+    bleClientSrv_dev_t* pSrv
 );
-
-void capCtrl_onDisconnected(void);
     
 uint8_t cmd_capCtrl(const uint8_t *pData, uint8_t size, XPrint xprint);
 

@@ -39,7 +39,6 @@ static void cSvr2_disconnected_cmplt(void* argp);
 
 static CBx cSvr2_procResolved_user = NULL;
 static CBx cSvr2_NtfCB = NULL;
-static u8 cSvr2_isProcBusy_user = 0;
 static uint16_t cSvr2_chr_handle = 0;
 
 static app_timer_id_t cSvr2_Tmr_id = NULL;
@@ -66,7 +65,6 @@ static void cSvr2_procTimeout(void* p_ctx){
         cSvr2_procResolved_user(-1,NULL);
         cSvr2_procResolved_user = NULL;
     }
-    cSvr2_isProcBusy_user = 0;
 }
 
 static void cSvr2_Tmr_handle(void* p_ctx){
@@ -112,18 +110,15 @@ APP_LOG_DEBUG("<%s> ", __func__);
 //    }
 //    print(">");
 //    printf("\n");
-    
-    // to be cruel
-    cSvr2_isProcBusy_user = 0;
-    
+
     if(cSvr2_NtfCB == NULL){
         APP_LOG_DEBUG("<%s cSvr2_NtfCB:NULL> ", __func__);
-        cSvr2_isProcBusy_user = 0;
+        APP_LOG_DEBUG("</%s 'cSvr2_NtfCB==NULL' >", __func__);
         return;    
     }
     else if(1 >= p_ntf_ind->length){
         APP_LOG_DEBUG("<%s len:NULL> ", __func__);
-        cSvr2_isProcBusy_user = 0;
+        APP_LOG_DEBUG("</%s 'too short' >", __func__);
         return;    
     }
     
@@ -131,8 +126,6 @@ APP_LOG_DEBUG("<%s> ", __func__);
     x.len = p_ntf_ind->length;
     x.buff = p_ntf_ind->p_value;
     cSvr2_NtfCB(0, &x);
-    cSvr2_NtfCB = NULL;
-    cSvr2_isProcBusy_user = 0;
 
 APP_LOG_DEBUG("</%s>", __func__);
 }
@@ -157,19 +150,11 @@ APP_LOG_DEBUG("<%s>", __func__);
         print("<%s fatal_error_-3_not-builded>\n", __func__);
         if(resolved){    resolved(-3,NULL);    }
     }
-    // test if busy
-    else if(cSvr2_isProcBusy_user == 1){
-        print("<%s fatal_error_-2_isProcBusy>\n", __func__);
-        if(resolved){    resolved(-2,NULL);    }
-        APP_LOG_DEBUG("</%s busy:1>", __func__);
-        return;
-    }
 
     cSvr2_NtfCB = resolved;
     cSvr2_procResolved_user = resolved;    // while happens timeout, will use it
     cSvr2_chr_handle = pCSvr2->WriteAttr(&pCSvr2->rsrc, UUID, uuid_len, cmd, len, NULL);
     
-    cSvr2_isProcBusy_user = 1;
     cSvr2_tHandle = cSvr2_procTimeout;
     app_timer_stop(cSvr2_Tmr_id);
     app_timer_start(cSvr2_Tmr_id, timeout, NULL);    // timeout

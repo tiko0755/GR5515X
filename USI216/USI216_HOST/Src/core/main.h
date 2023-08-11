@@ -125,8 +125,11 @@
 #define WLC_nEN_GPIO_Port         GPIO1            // CPS4041 Enable pin, active low
 #define WLC_nEN_Pin             GPIO_PIN_0        
 
-#define LED_GPIO_Port             GPIO0            // LED, turn on active low
-#define LED_Pin                 GPIO_PIN_4    
+#define RUNNING_GPIO_Port             GPIO0            // LED, turn on active low
+#define RUNNING_Pin                 GPIO_PIN_3    
+
+#define LED_CHG_GPIO_Port             GPIO0            // LED, turn on active low
+#define LED_CHG_Pin                 GPIO_PIN_2    
 
 /*******HCI UART IO CONFIG***********************/
 #define HCI_UART_ID                     0

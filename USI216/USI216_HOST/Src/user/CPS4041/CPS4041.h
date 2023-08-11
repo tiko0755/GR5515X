@@ -56,6 +56,7 @@ typedef struct{
     u8 status;
     uint16_t id;
     uint16_t ver;
+    uint16_t tick;
     
     uint8_t isPwrGood;
     // fetch MAC squence

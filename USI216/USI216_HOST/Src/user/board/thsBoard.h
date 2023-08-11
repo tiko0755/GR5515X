@@ -26,7 +26,6 @@ extern u8 ledFlshTz;
 /* expose components ------------------*/
 extern cps4041_dev_t cps4041;
 extern UartDev_t console;
-//extern const PIN_T RUNNING;
 
 // here goes for 3 BLE service
 #define CSRVS_COUNT (3)

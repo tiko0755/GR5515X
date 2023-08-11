@@ -273,6 +273,8 @@ static void app_gap_scan_stop_cb(uint8_t status, gap_stopped_reason_t reason)
 static void app_gap_adv_report_ind_cb(const gap_ext_adv_report_ind_t  *p_adv_report)
 {
     APP_LOG_DEBUG("<%s>", __func__);
+    app_adv_report_handler(p_adv_report->rssi,p_adv_report->data, p_adv_report->length, &p_adv_report->broadcaster_addr);
+    APP_LOG_DEBUG("</%s>", __func__);
 }
 
 /**

@@ -72,6 +72,8 @@ static void ServiceClient_gattc_ntf_ind_cb(bleClientSrv_rsrc_t* r, uint8_t conn_
 static void ServiceClient_gattc_srvc_browse_cb(bleClientSrv_rsrc_t* r, uint8_t conn_idx, uint8_t status, const ble_gattc_browse_srvc_t *p_browse_srvc);                /**< Service found callback during browsing procedure. */
 static void ServiceClient_gattc_prf_reg_cb(bleClientSrv_rsrc_t* r, uint8_t conn_idx, uint8_t status, gattc_prf_reg_evt_t reg_evt);
 
+static uint16_t ServiceClient_findHandler_byUUID(bleClientSrv_rsrc_t* r, const uint8_t* uuid, uint8_t len);
+
 /**
  *****************************************************************************************
  * @brief Excute Battery Service Client event handler.
@@ -288,6 +290,30 @@ APP_LOG_DEBUG("</%s> err=%d",__func__, err);
     return 0;
 }
 
+static uint16_t ServiceClient_findHandler_byUUID(bleClientSrv_rsrc_t* r, const uint8_t* uuid, uint8_t len)
+{
+APP_LOG_INFO("<%s>", __func__);
+    uint32_t i,j,k;
+    for( i = 0; i < r->attr_char_count; i++)
+    {
+        if(len != r->service.attr_char[i].uuid_len){
+            continue;
+        }
+        k = 0;
+        for(j=0;j<len;j++){
+            if(r->service.attr_char[i].uuid[j] != uuid[j]){
+                k++;
+                break;
+            }
+        }
+        if(k){    continue;    }
+        return (r->service.attr_char[i].handle+1);
+    }
+    APP_LOG_INFO("</%s >", __func__);
+    return 0;
+}
+
+
 static uint16_t ServiceClient_Notify_set(bleClientSrv_rsrc_t* r, bool is_enable, const uint8_t* uuid, uint8_t len)
 {
 APP_LOG_INFO("<%s>", __func__);
@@ -432,11 +458,15 @@ static void ServiceClient_gattc_ntf_ind_cb(bleClientSrv_rsrc_t* r, uint8_t conn_
     }
     APP_LOG_RAW_INFO(">\r\n");
 
-    for(i=0;i<NTF_CB_COUNT;i++){
-        if(r->evntNotifyInd[i]){
-            r->evntNotifyInd[i](conn_idx, p_ntf_ind);
+    if((p_ntf_ind->handle >= r->service.start_hdl) && (p_ntf_ind->handle <= r->service.end_hdl)){
+        for(i=0;i<NTF_CB_COUNT;i++){
+            if(r->evntNotifyInd[i]){
+                r->evntNotifyInd[i](conn_idx, p_ntf_ind);
+            }
         }
     }
+
+
 APP_LOG_DEBUG("</%s>", __func__);
 }                                            
     /**< Service found callback during browsing procedure. */

@@ -85,6 +85,7 @@ APP_LOG_DEBUG("<%s>", __func__);
     char svr_chr[16] = {0};
     uint8_t xCmd[32], buff[8];
     s32 x[32],i,j;
+    sdk_err_t error_code;
 
     if(strncmp(CMD, "pen.debug", strlen("pen.debug"))==0){
         print("+msg@pen.debug(g_loaded:%d, g_linked:%d)\r\n", g_loaded, g_linked);
@@ -93,6 +94,12 @@ APP_LOG_DEBUG("<%s>", __func__);
         print("+ok@pen.reset()\r\n");
         NVIC_SystemReset();
     }
+    else if(strncmp(CMD, "pen.scan", strlen("pen.scan"))==0){
+        error_code = ble_gap_scan_start();
+        APP_ERROR_CHECK(error_code);
+        print("+ok@pen.scan()\r\n");
+    }
+    
     else if(strncmp(CMD, "pen.mac", strlen("pen.mac"))==0){
         cps4041.start_getMAC(&cps4041.rsrc, fetchMAC_cmplt_str, 1);
         return 1;
@@ -277,7 +284,7 @@ static void svrChr_res(const char* PRE, s32 rslt, void* argv){
         sprintf(pStr,"%02x", x->buff[i]);
     }
 
-    if(rslt==0){    print("+ok@req %s %s\r\n", PRE, str);    }
+    if(rslt==0){    print("+msg@req %s %s\r\n", PRE, str);    }
     else{    print("+err@%req %s %d\r\n", PRE, rslt);    }
 }
 

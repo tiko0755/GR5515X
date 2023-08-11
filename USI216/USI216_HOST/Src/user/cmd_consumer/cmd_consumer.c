@@ -62,6 +62,7 @@ void setup_cmdConsumer(
 static void cmdConsumerTmr_handle(void* p_ctx){
     u8 cmdS[MAX_CMD_LEN] = {0};
     u16 len;
+    
     cmdConsumerRsrc_t* r = (cmdConsumerRsrc_t*)p_ctx;
     int count = RingBuffer_GetCount(r->rb);
     if((count<=0) || (r->fetchLine==NULL))    return;

@@ -16,6 +16,7 @@
 #include "user_app.h"
 #include "fetch_mac_proc.h"
 #include "thsBoard.h"
+#include "unknown_svr1.h"
 
 /*
  * LOCAL VARIABLE DEFINITIONS
@@ -102,27 +103,42 @@ static void capCtrl_ledFlash(u16 interval);
  *****************************************************************************************
  */
 #define CAP_CTRL_INTERVAL (50)
-#define CAP_LOWER     (45)
-#define CAP_UPPER    (75)
+#define CAP_LOWER     (80)
+#define CAP_UPPER    (85)
 
 static u8 ledSqu=0;
-static u16 ledTick, ledTmr;
+static u8 ledSquPrv = 0;
+static u16 ledTick, ledTmr = 0, ledTmrPrv = 0;
 static u8 capCtrlLoadedSta = 0;
 static u8 capCtrlLinkedSta = 0;
+static u8 capCtrl_cap = 0;
+
+static void capCtrl_getMAC_cmplt(int32_t sta, void* e);
+static uint8_t capCtrl_MAC[6] = {0};
+static void capCtrl_cps4041_intEvnt(void* e);
+
+static void capCtrl_build_cmplt(int32_t sta, void* e);
+
+static void capCtrl_onDisconnected(int32_t sta, void* e);
+static void capCtrl_ReqBattCap(int32_t sta, void* e);
+static bleClientSrv_dev_t* srvs = NULL;
 
 void capCtrlInitial(
     cps4041_dev_t* d, 
-    const PIN_T* led, 
-    bleClientSrv_dev_t* batt, 
-    bleClientSrv_dev_t* user
+    const PIN_T* led,
+    bleClientSrv_dev_t* pSrv
 ){
     s32 mid = (CAP_UPPER-CAP_LOWER)/2;
     pCPS4041 = d;
     pLED = led;
-    capLower = CAP_LOWER + (mid>5?5:mid);    // 
+    
+    capLower = CAP_LOWER;    //
     capUpper = CAP_UPPER;     //
+    
+    srvs = pSrv;
 
     ledSqu = 3;
+    ledSquPrv = ledSqu;
     hal_gpio_write_pin(pLED->port, pLED->pin, GPIO_PIN_RESET);
     
     pCPS4041->charger_en(&pCPS4041->rsrc);
@@ -132,26 +148,28 @@ void capCtrlInitial(
     APP_ERROR_CHECK(error_code);
     app_timer_start(tmrID_capCtrl, CAP_CTRL_INTERVAL, NULL);
     
-}
-
-void capCtrl_onDisconnected(void){
-    if(capCtrlLinkedSta){
-        capCtrlLinkedSta = 0;
-    }
+    pCPS4041->rsrc.evnt_nINT = capCtrl_cps4041_intEvnt;
 }
 
 // led control
 static void capCtrl_ledOff(void){
+//    if(ledSquPrv == ledSqu){    return;    }
     ledSqu = 1;
+    ledSquPrv = ledSqu;
 }
 
 static void capCtrl_ledOn(void){
+//    if(ledSquPrv == ledSqu){    return;    }
     ledSqu = 2;
 }
 
+
 static void capCtrl_ledFlash(u16 interval){
+//    if((ledSquPrv==ledSqu)&&(ledTmr==ledTmrPrv)){    return;    }
     ledSqu = 5;
+    ledSquPrv = ledSqu;
     ledTmr = interval;
+    ledTmrPrv = ledTmr;
 }
 
 static void tmrHandle_ledCtrl(void* p_ctx){
@@ -205,25 +223,28 @@ static void tmrHandle_capCtrl(void* p_ctx){
 static u8 capCtrl_isConnected = 0;
 static u8 capCtrlSqu = 0;
 static u16 capCtrl_tick;
+static uint16_t cpsIntFlags = 0x0000;
 static void tmrHandle_capCtrlxxx(void* p_ctx){
     s32 i; 
+    uint8_t cmd[8];
+    
+//    APP_LOG_DEBUG("<%s capCtrlSqu:%d >", __func__, capCtrlSqu);
     
     capCtrl_tick += CAP_CTRL_INTERVAL;
-//    u8* mac;
-    APP_LOG_DEBUG("<%s squ:%d Loaded:%d  Linked:%d>", __func__, capCtrlSqu, capCtrlLoadedSta, capCtrlLinkedSta);
     switch(capCtrlSqu){
-        // unloaded, disconnected
         case 0:
-            // disconnect
-            if(capCtrl_isConnected){
-                capCtrlSqu = 20;    // start disconnect
+            if(cpsIntFlags == 0x0020){  // loaded sense
+                pCPS4041->start_getMAC(&pCPS4041->rsrc, capCtrl_getMAC_cmplt, 1);
+                // wait for fetched MAC
+                capCtrlSqu = 1;
+                capCtrl_tick = 0;
+                capCtrl_ledOn();
             }
-            pCPS4041->start_getMAC(&pCPS4041->rsrc, NULL, 1);
-            // wait for fetched MAC
-            capCtrlSqu = 1;
-            capCtrl_tick = 0;
+            else{
+                capCtrl_ledOff();
+            }
             break;
-            
+
         case 1:
             if(capCtrl_tick > 10000){
                 capCtrlSqu = 0;
@@ -232,16 +253,101 @@ static void tmrHandle_capCtrlxxx(void* p_ctx){
             
         // completed from proc_fetchMAC_start    
         case 2:
-            if(p_ctx ){
-                capCtrlLinkedSta = 1;
-            }
-            capCtrlSqu = 0;
-            app_timer_start(tmrID_capCtrl, 50, NULL);
+            start_buildSrvProc(capCtrl_MAC, capCtrl_build_cmplt);
+            capCtrl_tick = 0;
+            capCtrlSqu = 3;
+            capCtrl_ledFlash(100);
             break;
+        
+        case 3:
+            if(capCtrl_tick > 6000){
+                capCtrlSqu = 0;
+            }
+            break;
+            
+        case 4:{
+            if(capCtrl_tick > 3000){
+                capCtrl_tick = 0;
+                memset(cmd,0,8);
+                cmd[0] = 0x2c;
+                cmd[1] = 0x08;
+                proc_svr1chr1_req(cmd, 4, capCtrl_ReqBattCap, 2000);
+                APP_LOG_DEBUG("<%s capCtrl_cap:%d >", __func__, capCtrl_cap);
+            }
+            
+            if((capCtrl_cap >= capLower) && (capCtrl_cap <= capUpper)){
+                capCtrl_ledOn();
+            }
+            else if(capCtrl_cap > capUpper){
+                capCtrl_ledFlash(1000);
+                cps4041.charger_dis(&cps4041.rsrc);
+                xBleGap_disconnect(capCtrl_onDisconnected);
+                capCtrlSqu = 5;
+            }
+            else{
+                capCtrl_ledFlash(100);
+            }
+            
+            // removed under connected, will disconnect it
+            if(cpsIntFlags == 0x0002 && capCtrl_isConnected){
+                // disconnect
+                xBleGap_disconnect(capCtrl_onDisconnected);
+                capCtrlSqu = 0;
+                capCtrl_ledOff();
+            }
+            break;
+        }
+            
+        case 5:{
+            break;
+        }
     }
-
-APP_LOG_DEBUG("</%s>", __func__);
+//    APP_LOG_DEBUG("</%s capCtrlSqu:%d ledSqu%:%d >", __func__, capCtrlSqu, ledSqu);
 }
+
+static void capCtrl_ReqBattCap(int32_t sta, void* e){
+    APP_LOG_DEBUG("<%s >", __func__);
+    if(sta != 0) return;
+    buff_t* r = (buff_t*)e;
+    capCtrl_cap = r->buff[4];
+    APP_LOG_DEBUG("</%s capCtrl_cap=%d>", __func__, capCtrl_cap);
+}
+
+static void capCtrl_onDisconnected(int32_t sta, void* e){
+    capCtrl_isConnected = 0;
+}
+
+static void capCtrl_getMAC_cmplt(int32_t sta, void* e){
+    APP_LOG_DEBUG("<%s >", __func__);
+    if(sta==0){
+        capCtrlSqu = 2;
+        memcpy(capCtrl_MAC,e,6);
+    }
+    else if(sta == 1){
+    }
+    else{
+        capCtrlSqu = 0;
+    }
+    APP_LOG_DEBUG("</%s >", __func__);
+}
+
+static void capCtrl_build_cmplt(int32_t sta, void* e){
+    APP_LOG_DEBUG("<%s sta:%d >", __func__, sta);
+    if(sta==0){
+        capCtrlSqu = 4;
+        capCtrl_isConnected = 1;
+    }
+    else{
+        capCtrlSqu = 0;
+    }
+    APP_LOG_DEBUG("</%s >", __func__);
+}
+    
+static void capCtrl_cps4041_intEvnt(void* e){
+    cps4041_rsrc_t* r = (cps4041_rsrc_t*)e;
+    cpsIntFlags = r->intFlags[0];
+}
+
 
 /**
  *****************************************************************************************

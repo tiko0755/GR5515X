@@ -57,7 +57,7 @@ int32_t start_buildSrvProc(uint8_t *mac, CBx resolve){
     }
 
     app_timer_stop(tmrID);
-    app_timer_start(tmrID, BUILD_TICK, NULL);
+    error_code = app_timer_start(tmrID, BUILD_TICK, NULL);
     APP_ERROR_CHECK(error_code);
     if(error_code == SDK_SUCCESS){
         cmplt_buildSrvs = resolve;
@@ -163,7 +163,8 @@ static void tmrHandle(void* p_ctx){
             break;
         }
         
-        case 1:{    
+        case 1:{
+            
             buildSrv_isConnected = 0;
             buildSrv_isSec_enc = 0;
             buildSrv_isMtu_exchanged = 0;
@@ -200,7 +201,7 @@ static void tmrHandle(void* p_ctx){
             else if(buildSrv_isConnected == -1){
                 terminate_buildSrvProc(-201, NULL);
             }
-            else if(buildTick > 500){
+            else if(buildTick > 1000){
                 terminate_buildSrvProc(-902, NULL);
             }
             break;
@@ -302,3 +303,9 @@ static void tmrHandle(void* p_ctx){
     }
     APP_LOG_DEBUG("</%s >", __func__);
 }
+
+
+
+
+
+

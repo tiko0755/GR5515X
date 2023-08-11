@@ -39,7 +39,6 @@ static void cSvr3_disconnected_cmplt(void* argp);
 
 static CBx cSvr3_procResolved_user = NULL;
 static CBx cSvr3_NtfCB = NULL;
-static u8 cSvr3_isProcBusy_user = 0;
 static uint16_t cSvr3_chr1_handle = 0;
 
 static app_timer_id_t cSvr3_Tmr_id = NULL;
@@ -66,7 +65,6 @@ static void cSvr3_procTimeout(void* p_ctx){
         cSvr3_procResolved_user(-1,NULL);
         cSvr3_procResolved_user = NULL;
     }
-    cSvr3_isProcBusy_user = 0;
 }
 
 static void cSvr3_Tmr_handle(void* p_ctx){
@@ -110,17 +108,13 @@ APP_LOG_DEBUG("<%s> ", __func__);
 //    print(">");
 //    printf("\n");
     
-    // to be cruel
-    cSvr3_isProcBusy_user = 0;
     
     if(cSvr3_NtfCB == NULL){
         APP_LOG_DEBUG("<%s cSvr3_NtfCB:NULL> ", __func__);
-        cSvr3_isProcBusy_user = 0;
         return;    
     }
     else if(1 >= p_ntf_ind->length){
         APP_LOG_DEBUG("<%s len:NULL> ", __func__);
-        cSvr3_isProcBusy_user = 0;
         return;    
     }
     
@@ -128,8 +122,6 @@ APP_LOG_DEBUG("<%s> ", __func__);
     x.len = p_ntf_ind->length;
     x.buff = p_ntf_ind->p_value;
     cSvr3_NtfCB(0, &x);
-    cSvr3_NtfCB = NULL;
-    cSvr3_isProcBusy_user = 0;
 
 APP_LOG_DEBUG("</%s>", __func__);
 }
@@ -154,19 +146,11 @@ APP_LOG_DEBUG("<%s>", __func__);
         print("<%s fatal_error_-3_not-builded>\n", __func__);
         if(resolved){    resolved(-3,NULL);    }
     }
-    // test if busy
-    else if(cSvr3_isProcBusy_user == 1){
-        print("<%s fatal_error_-2_isProcBusy>\n", __func__);
-        if(resolved){    resolved(-2,NULL);    }
-        APP_LOG_DEBUG("</%s busy:1>", __func__);
-        return;
-    }
 
     cSvr3_NtfCB = resolved;
     cSvr3_procResolved_user = resolved;    // while happens timeout, will use it
     cSvr3_chr1_handle = pCSvr3->WriteAttr(&pCSvr3->rsrc, USER_SERVICE_3[1], USR_UUID_LEN, cmd, len, NULL);
     
-    cSvr3_isProcBusy_user = 1;
     cSvr3_tHandle = cSvr3_procTimeout;
     app_timer_stop(cSvr3_Tmr_id);
     app_timer_start(cSvr3_Tmr_id, timeout, NULL);    // timeout

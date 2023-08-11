@@ -83,6 +83,6 @@ void ble_init_cmp_callback(void);
  *****************************************************************************************
  */
 void app_disconnected_handler(uint8_t conn_idx, uint8_t reason);
-
+void app_adv_report_handler(uint8_t rssi,const uint8_t *p_data, uint16_t length, const gap_bdaddr_t *p_bdaddr);
 #endif
 
